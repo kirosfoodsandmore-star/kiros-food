@@ -20,8 +20,18 @@ services:
       - key: NODE_ENV
         value: production
       # ── Database (Aiven) ─────────────────────────────────────────────────
-      - key: DATABASE_URL
-        sync: false # Aiven service URI: postgres://avnadmin:…@…aivencloud.com:PORT/defaultdb
+      # Same names as server/.env. (A single DATABASE_URL, e.g. postgres://avnadmin:…@HOST:PORT/defaultdb, also works
+      # and takes priority over these five if you set it.)
+      - key: DB_HOST
+        sync: false # e.g. pg-xxxx-yourproject.j.aivencloud.com
+      - key: DB_PORT
+        sync: false # Aiven's port (not 5432)
+      - key: DB_USER
+        sync: false # avnadmin
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false # defaultdb
       - key: DB_SSL
         value: "true"
       - key: DB_POOL_MAX
@@ -46,12 +56,14 @@ services:
       # ── URLs ─────────────────────────────────────────────────────────────
       - key: APP_URL
         sync: false # this service's URL, e.g. https://kiros-api.onrender.com
+      # In production the API accepts browser requests ONLY from these origins (no *.vercel.app wildcard), so set all three
+      # to the exact web addresses, with no trailing slash.
       - key: CORS_ORIGINS
-        sync: false # storefront + admin origins, comma-separated
+        sync: false # storefront + admin origins, comma-separated, e.g. https://kiros.vercel.app,https://kiros-admin.vercel.app
       - key: STOREFRONT_URL
         sync: false # e.g. https://kiros.vercel.app
       - key: ADMIN_URL
-        sync: false # e.g. https://kiros-admin.vercel.app
+        sync: false # e.g. https://kiros-admin.vercel.app (same as STOREFRONT_URL if one site serves both)
       - key: PAYSTACK_CALLBACK_URL
         sync: false # optional, defaults to STOREFRONT_URL/checkout/return
       # ── Firebase (Authentication + Firestore chat) ───────────────────────
@@ -60,13 +72,16 @@ services:
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       - key: FIREBASE_PRIVATE_KEY
-        sync: false # paste the PEM with literal \n line breaks
+        sync: false # the PEM on ONE line with literal \n between lines (as in the service-account JSON's "private_key")
+      # Alternative to the three values above: FIREBASE_SERVICE_ACCOUNT_JSON = the whole service-account JSON on one line.
       - key: FIREBASE_API_KEY
         sync: false # Web API key (staff email/password verification)
       # ── File uploads ─────────────────────────────────────────────────────
       - key: CLOUDINARY_URL
         sync: false # cloudinary://key:secret@cloud_name
       # ── Email ────────────────────────────────────────────────────────────
+      - key: EMAIL_ENABLED
+        value: "true"
       - key: EMAIL_PROVIDER
         value: nodemailer # or "script" to use the Apps Script relay
       - key: EMAIL_USER
