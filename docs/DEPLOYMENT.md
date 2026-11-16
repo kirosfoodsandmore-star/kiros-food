@@ -54,10 +54,10 @@ Emails sent: restaurant welcome, staff invite (48-hour link), password reset cod
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | the Aiven service URI from §1 |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | from the Aiven service in §1 (same names as `server/.env`). Alternatively set the single `DATABASE_URL` (the service URI); it takes priority |
 | `APP_URL` | the Render URL, e.g. `https://kiros-api.onrender.com`. It must be public: emails load the Kiros Farmshop logo from `APP_URL/brand/`, and mail apps cannot fetch images from localhost |
-| `CORS_ORIGINS` | storefront and admin origins, comma-separated |
-| `STOREFRONT_URL`, `ADMIN_URL` | the two web apps (used in email links and the Paystack return URL) |
+| `STOREFRONT_URL` | the web app's address, e.g. `https://kiros.vercel.app`. It is the only URL to set: the admin portal is the same site under `/admin`, so staff-invite and new-order emails link to `STOREFRONT_URL/admin/…`. Also used for the Paystack return URL |
+| `CORS_ORIGINS` | the same address (comma-separated if the web app is also served from another domain). In production the API accepts browser requests only from `CORS_ORIGINS` and `STOREFRONT_URL` |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_API_KEY` | from §2 |
 | `CLOUDINARY_URL` | from §3 |
 | `EMAIL_USER`, `EMAIL_PASSWORD` (or `EMAIL_SCRIPT_URL`) | from §4 |
@@ -90,7 +90,7 @@ Steps:
 
 1. **[CONSOLE]** vercel.com → Add New → Project → import the GitHub repo. Framework is detected as Vite; leave the commands as the config provides them.
 2. Add the environment variables below under Settings → Environment Variables (Production and Preview), then redeploy.
-3. Copy the production URL (e.g. `https://kiros.vercel.app`) into the API's `CORS_ORIGINS`, `STOREFRONT_URL` and `ADMIN_URL` on Render. Preview deployments on `*.vercel.app` are already allowed by the API's CORS rule.
+3. Copy the production URL (e.g. `https://kiros.vercel.app`) into the API's `STOREFRONT_URL` and `CORS_ORIGINS` on Render (no trailing slash). Vercel preview deployments (`*.vercel.app`) are not allowed by the API in production; add a preview's exact address to `CORS_ORIGINS` if you want to test against it.
 4. **[CONSOLE]** Firebase → Authentication → Settings → Authorized domains → add the Vercel domain (and any custom domain) so Google and phone sign-in work.
 5. **[CONSOLE]** Mapbox → Access tokens → restrict the public token's allowed URLs to the Vercel domain.
 

@@ -56,14 +56,13 @@ services:
       # ── URLs ─────────────────────────────────────────────────────────────
       - key: APP_URL
         sync: false # this service's URL, e.g. https://kiros-api.onrender.com
-      # In production the API accepts browser requests ONLY from these origins (no *.vercel.app wildcard), so set all three
-      # to the exact web addresses, with no trailing slash.
-      - key: CORS_ORIGINS
-        sync: false # storefront + admin origins, comma-separated, e.g. https://kiros.vercel.app,https://kiros-admin.vercel.app
+      # One web app address. The admin portal is the same site under /admin, so there is no separate admin URL.
+      # In production the API accepts browser requests ONLY from CORS_ORIGINS and STOREFRONT_URL (no *.vercel.app
+      # wildcard), so use the exact address with no trailing slash.
       - key: STOREFRONT_URL
-        sync: false # e.g. https://kiros.vercel.app
-      - key: ADMIN_URL
-        sync: false # e.g. https://kiros-admin.vercel.app (same as STOREFRONT_URL if one site serves both)
+        sync: false # e.g. https://kiros.vercel.app (email links, incl. https://kiros.vercel.app/admin, and the Paystack return)
+      - key: CORS_ORIGINS
+        sync: false # same address, comma-separated if more than one (e.g. a custom domain as well)
       - key: PAYSTACK_CALLBACK_URL
         sync: false # optional, defaults to STOREFRONT_URL/checkout/return
       # ── Firebase (Authentication + Firestore chat) ───────────────────────

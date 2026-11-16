@@ -118,7 +118,7 @@ function emailConfig() {
 }
 
 const corsList = readList("CORS_ORIGINS");
-const corsOrigins = corsList.length > 0 ? corsList : ["http://localhost:5173", "http://localhost:5174"];
+const corsOrigins = corsList.length > 0 ? corsList : ["http://localhost:5173"];
 const storefrontUrl = read("STOREFRONT_URL", corsOrigins[0]).replace(/\/+$/, "");
 
 export const env = {
@@ -127,10 +127,10 @@ export const env = {
   port: readInt("PORT", 4000),
   appUrl: read("APP_URL", "http://localhost:4000").replace(/\/+$/, ""),
   corsOrigins,
-  /** Customer-facing web app (links in customer emails, Paystack return URL). */
+  /** The one web app address (STOREFRONT_URL): customer emails, the Paystack return URL and the admin portal below. */
   storefrontUrl,
-  /** Admin portal (links in staff emails: invites, password resets). */
-  adminUrl: read("ADMIN_URL", corsOrigins[1] ?? storefrontUrl).replace(/\/+$/, ""),
+  /** Admin portal (links in staff emails: invites, new orders). It is the same site, under /admin. */
+  adminUrl: `${storefrontUrl}/admin`,
   db: {
     url: read("DATABASE_URL"),
     host: read("DB_HOST", "localhost"),
