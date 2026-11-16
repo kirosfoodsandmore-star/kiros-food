@@ -81,16 +81,20 @@ services:
       # ── Email ────────────────────────────────────────────────────────────
       - key: EMAIL_ENABLED
         value: "true"
+      # Pick ONE route with EMAIL_PROVIDER (you will be asked):
+      #   script     = Google Apps Script relay: needs EMAIL_SCRIPT_URL. Plain HTTPS, so it works where SMTP is blocked.
+      #   nodemailer = Gmail SMTP: needs EMAIL_USER + EMAIL_PASSWORD. Render may block outbound SMTP on the free plan.
+      # With "script", EMAIL_USER/EMAIL_PASSWORD are optional: if present, a failed relay call falls back to Gmail SMTP.
       - key: EMAIL_PROVIDER
-        value: nodemailer # or "script" to use the Apps Script relay
+        sync: false # script | nodemailer (defaults to nodemailer if left empty)
+      - key: EMAIL_SCRIPT_URL
+        sync: false # the Apps Script web-app URL (required when EMAIL_PROVIDER=script)
       - key: EMAIL_USER
-        sync: false
+        sync: false # the Gmail address (also the fallback sender)
       - key: EMAIL_PASSWORD
         sync: false # Gmail App Password
       - key: EMAIL_FROM
-        sync: false
-      - key: EMAIL_SCRIPT_URL
-        sync: false # only if EMAIL_PROVIDER=script
+        sync: false # e.g. Kiros <you@gmail.com>
       # ── Restaurant sign-up (open only until the first restaurant exists) ──
       - key: ALLOW_SIGNUP
         value: "false"
