@@ -1,0 +1,15 @@
+{
+  "name": "Kiros Rider",
+  "short_name": "Kiros Rider",
+  "description": "Your deliveries, with alerts for new ones.",
+  "start_url": "/rider",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#14213d",
+  "icons": [
+    { "src": "/rider-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/rider-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/rider-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

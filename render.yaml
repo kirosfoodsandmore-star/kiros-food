@@ -1,0 +1,93 @@
+# Render Blueprint — Kiros API on the free plan.
+# Render → New → Blueprint → pick this repo. You will be asked for the values marked `sync: false`.
+# The database is an Aiven PostgreSQL service (DATABASE_URL), not a Render database.
+# Free web services sleep after 15 minutes idle; the first request after that takes ~30-60 s.
+services:
+  - type: web
+    name: kiros-api
+    runtime: node
+    plan: free
+    region: frankfurt # closest Render region to West Africa
+    rootDir: server
+    buildCommand: npm ci
+    # Free instances can't use a pre-deploy command, so migrations run on every start (a no-op when up to date).
+    startCommand: npm run migration:run && npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # ── Database (Aiven) ─────────────────────────────────────────────────
+      - key: DATABASE_URL
+        sync: false # Aiven service URI: postgres://avnadmin:…@…aivencloud.com:PORT/defaultdb
+      - key: DB_SSL
+        value: "true"
+      - key: DB_POOL_MAX
+        value: "5"
+      - key: DB_LOGGING
+        value: "false"
+      # ── Auth & secrets ───────────────────────────────────────────────────
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true # seals Paystack secret keys at rest
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: OTP_TTL_MINUTES
+        value: "15"
+      - key: INVITE_TTL_HOURS
+        value: "48"
+      # ── URLs ─────────────────────────────────────────────────────────────
+      - key: APP_URL
+        sync: false # this service's URL, e.g. https://kiros-api.onrender.com
+      - key: CORS_ORIGINS
+        sync: false # storefront + admin origins, comma-separated
+      - key: STOREFRONT_URL
+        sync: false # e.g. https://kiros.vercel.app
+      - key: ADMIN_URL
+        sync: false # e.g. https://kiros-admin.vercel.app
+      - key: PAYSTACK_CALLBACK_URL
+        sync: false # optional, defaults to STOREFRONT_URL/checkout/return
+      # ── Firebase (Authentication + Firestore chat) ───────────────────────
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false # paste the PEM with literal \n line breaks
+      - key: FIREBASE_API_KEY
+        sync: false # Web API key (staff email/password verification)
+      # ── File uploads ─────────────────────────────────────────────────────
+      - key: CLOUDINARY_URL
+        sync: false # cloudinary://key:secret@cloud_name
+      # ── Email ────────────────────────────────────────────────────────────
+      - key: EMAIL_PROVIDER
+        value: nodemailer # or "script" to use the Apps Script relay
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false # Gmail App Password
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_SCRIPT_URL
+        sync: false # only if EMAIL_PROVIDER=script
+      # ── Restaurant sign-up (open only until the first restaurant exists) ──
+      - key: ALLOW_SIGNUP
+        value: "false"
+      - key: RIDER_ACCEPT_MINUTES
+        value: "3"
+      # ── Platform admin & realtime ────────────────────────────────────────
+      - key: PLATFORM_ADMIN_EMAILS
+        value: edoghotugiddy@gmail.com,caroline@gmail.com
+      - key: SOCKET_ENABLED
+        value: "true"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: SCHEDULER_INTERVAL_MINUTES
+        value: "5"

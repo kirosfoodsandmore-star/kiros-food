@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Order chat messages: the server (Admin SDK) is the only writer. Signed-in Firebase users
+    // (customers via phone/Google, staff via email/Google) open realtime read listeners filtered by
+    // conversationId, which they only learn from the API after an ownership/branch check.
+    match /orderChatMessages/{messageId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,8 @@
+server
+docs
+*.md
+render.yaml
+firebase.json
+.firebaserc
+firestore.rules
+firestore.indexes.json
