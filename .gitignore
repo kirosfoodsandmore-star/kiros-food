@@ -3,3 +3,7 @@ node_modules/
 *.log
 dist/
 .firebase/
+.claude/
+/ai_agent_flow_*.md
+/KIROS FAQ Content.*
+/KIROS FarmShop*.md

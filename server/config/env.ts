@@ -77,7 +77,7 @@ function firebaseConfig() {
   let privateKey = read("FIREBASE_PRIVATE_KEY")
     .trim()
     .replace(/^["']+|["',\s]+$/g, "")
-    .replace(/\n/g, "\n");
+    .replace(/\\n/g, "\n"); // .env stores the key on one line with literal "\n" sequences
   const serviceAccountJson = read("FIREBASE_SERVICE_ACCOUNT_JSON");
   if (serviceAccountJson) {
     try {
