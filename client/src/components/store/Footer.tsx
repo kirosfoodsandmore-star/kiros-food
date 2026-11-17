@@ -34,6 +34,10 @@ export function StoreFooter() {
   const onItemPage = Boolean(useMatch("/:slug/item/:itemId"))
   // Someone following an order is not browsing: skip the promo band so the page ends sooner.
   const onOrderPage = Boolean(useMatch("/:slug/orders/:orderId"))
+  // The Contact page already shows the phone, email, address, hours, socials and delivery note, so the footer there
+  // drops its own copies (and the promo band) instead of repeating them under the page.
+  const onContactPage = Boolean(useMatch("/:slug/contact"))
+  const skipPromo = onOrderPage || onContactPage
   const branch = branches?.find((b) => b.id === branchId)
   const whatsapp = profile.socialLinks?.whatsapp ?? null
   const shownBranches = (branches ?? []).slice(0, 5)
@@ -43,9 +47,9 @@ export function StoreFooter() {
   const links: FooterLink[] = [...storeNavLinks(slug).filter((l) => l.label !== "Delivery"), { label: "My orders", href: `/${slug}/orders` }, { label: "Account", href: `/${slug}/account` }, ...team.entries.map((e) => ({ label: e.label, href: e.href }))]
 
   return (
-    <footer className={onOrderPage ? "mt-10" : "mt-24"} data-cy="store-footer">
+    <footer className={skipPromo ? "mt-10" : "mt-24"} data-cy="store-footer">
       {/* Call to action, overlapping the footer below */}
-      {onOrderPage ? null : <div className="relative z-10 mx-auto max-w-6xl px-4">
+      {skipPromo ? null : <div className="relative z-10 mx-auto max-w-6xl px-4">
         <div className="grain relative isolate overflow-hidden rounded-[2rem] bg-ink px-6 py-12 text-ink-foreground shadow-2xl sm:px-12 sm:py-16">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
             <div className="animate-aurora absolute -left-[10%] -top-[60%] aspect-square w-[55%] rounded-full bg-primary/50 blur-[90px]" />
@@ -71,15 +75,15 @@ export function StoreFooter() {
         </div>
       </div>}
 
-      <div className={cn("overflow-hidden bg-ink text-ink-foreground", onOrderPage ? "pt-12" : "-mt-24 pt-36", onItemPage && "pb-24 md:pb-0")}>
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 pb-12 text-sm sm:grid-cols-2 lg:grid-cols-[1.25fr_0.8fr_1.2fr_1fr]">
+      <div className={cn("overflow-hidden bg-ink text-ink-foreground", skipPromo ? "pt-12" : "-mt-24 pt-36", onItemPage && "pb-24 md:pb-0")}>
+        <div className={cn("mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 pb-12 text-sm sm:grid-cols-2", onContactPage ? "gap-8 pb-8 lg:grid-cols-[1.25fr_0.8fr_1.2fr]" : "lg:grid-cols-[1.25fr_0.8fr_1.2fr_1fr]")}>
           {/* Brand + contact */}
           <div className="space-y-5">
             <Link to={`/${slug}`} className="inline-flex items-center gap-3">
               <BrandMark className="size-11 text-lg" />
               <span className="font-display text-xl font-semibold">{profile.name}</span>
             </Link>
-            {profile.phone || whatsapp ? (
+            {!onContactPage && (profile.phone || whatsapp) ? (
               <div className="flex items-start gap-3">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-gold"><Headset className="size-5" /></span>
                 <div>
@@ -92,7 +96,7 @@ export function StoreFooter() {
               </div>
             ) : null}
             {profile.tagline ? <p className="max-w-xs leading-relaxed text-ink-foreground/60">{profile.tagline}</p> : null}
-            <SocialLinks links={{ ...profile.socialLinks, ...extras.socialLinks }} tone="ink" />
+            {onContactPage ? null : <SocialLinks links={{ ...profile.socialLinks, ...extras.socialLinks }} tone="ink" />}
           </div>
 
           {/* Links */}
@@ -104,7 +108,7 @@ export function StoreFooter() {
           </nav>
 
           {/* Head office */}
-          <div>
+          {onContactPage ? null : <div>
             <h3 className={headingCls}>Head office</h3>
             <ul className="space-y-3 text-ink-foreground/80">
               {profile.address ? <li className="flex items-start gap-2.5"><MapPin className="mt-0.5 size-4 shrink-0 text-gold" />{profile.address}</li> : null}
@@ -118,7 +122,7 @@ export function StoreFooter() {
               ) : null}
             </ul>
             {extras.deliveryNotice ? <p className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-relaxed text-ink-foreground/65">{extras.deliveryNotice}</p> : null}
-          </div>
+          </div>}
 
           {/* Branches */}
           {shownBranches.length > 0 ? (

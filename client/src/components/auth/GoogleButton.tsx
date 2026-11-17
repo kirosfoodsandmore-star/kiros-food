@@ -4,17 +4,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { firebaseConfigured, signInWithGoogle } from "@/lib/firebase"
-
-/** What went wrong, in words a person can act on. Null when they simply closed the Google window. */
-function problem(err: unknown): string | null {
-  const code = (err as { code?: string } | null)?.code
-  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return null
-  if (code === "auth/popup-blocked") return "Your browser blocked the Google window. Allow pop-ups for this site and try again."
-  if (code === "auth/network-request-failed") return "Couldn't reach Google. Check your connection and try again."
-  if (code === "auth/unauthorized-domain") return "Google sign-in isn't allowed on this web address yet. Add it in Firebase under Authentication → Settings → Authorized domains."
-  return (err as Error | null)?.message || "Google sign-in failed. Please try again."
-}
+import { firebaseConfigured, googleErrorMessage, signInWithGoogle } from "@/lib/firebase"
 
 function GoogleMark() {
   return (
@@ -44,7 +34,7 @@ export function GoogleButton({ onIdToken, label = "Continue with Google", cy }: 
     try {
       await onIdToken(await signInWithGoogle())
     } catch (err) {
-      const message = problem(err)
+      const message = googleErrorMessage(err)
       if (message) toast.error(message)
     } finally {
       setBusy(false)

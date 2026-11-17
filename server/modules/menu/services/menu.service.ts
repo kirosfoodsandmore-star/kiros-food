@@ -296,6 +296,36 @@ export class MenuService {
     return this.group(actor, group.id);
   }
 
+  /** "Dressing" → "Dressing (copy)", then "(copy 2)" and so on: the first name nobody is using. */
+  private copyName(source: string, taken: string[]): string {
+    const base = source.replace(/ \(copy(?: \d+)?\)$/i, "");
+    const used = new Set(taken.map((n) => n.toLowerCase()));
+    for (let n = 1; ; n++) {
+      const suffix = n === 1 ? " (copy)" : ` (copy ${n})`;
+      const name = base.slice(0, 120 - suffix.length) + suffix;
+      if (!used.has(name.toLowerCase())) return name;
+    }
+  }
+
+  /** A copy of a group with all of its options. The copy is not attached to any item until the owner attaches it. */
+  async duplicateGroup(actor: Actor, id: string): Promise<OptionGroupDTO> {
+    assertPermission(actor, "menu.edit");
+    const groups = await this.repo.listGroups(actor.organizationId);
+    const source = groups.find((g) => g.id === id);
+    if (!source) throw AppError.notFound("Option group not found");
+    if (source.options.some((o) => o.priceDelta !== 0) && !can(actor, "menu.edit_prices")) throw AppError.forbidden("You cannot set prices");
+    const name = this.copyName(source.name, groups.map((g) => g.name));
+    const copy = await inTransaction(async (tx) => {
+      const created = await this.repo.createGroup({ organizationId: actor.organizationId, name, helpText: source.helpText, minSelect: source.minSelect, maxSelect: source.maxSelect, sortOrder: source.sortOrder }, tx);
+      for (const o of source.options) {
+        await this.repo.createOption({ organizationId: actor.organizationId, groupId: created.id, name: o.name, priceDelta: o.priceDelta, isActive: o.isActive, sortOrder: o.sortOrder }, tx);
+      }
+      await this.audit.log(actor, { action: "create", entityType: "option_group", entityId: created.id, summary: `Duplicated option group "${source.name}" as "${name}" (${source.options.length} options)` }, tx);
+      return created;
+    });
+    return this.group(actor, copy.id);
+  }
+
   async updateGroup(actor: Actor, id: string, data: UpdateGroupBody): Promise<OptionGroupDTO> {
     assertPermission(actor, "menu.edit");
     const group = await this.repo.findGroup(actor.organizationId, id);

@@ -21,7 +21,7 @@ import type { AcceptInviteInput } from "../../user/validators/user.schema";
 import type { LoginResultDTO, SessionDTO, TokenPairDTO } from "../dto/auth.dto";
 import { PasswordResetRepository } from "../repositories/passwordReset.repository";
 import { RefreshTokenRepository } from "../repositories/refreshToken.repository";
-import type { ChangePasswordInput, FirebaseSignInInput, LoginInput, RegisterInput, ResetPasswordWithCodeInput, UpdateProfileInput } from "../validators/auth.schema";
+import type { ChangePasswordInput, FirebaseSignInInput, LoginInput, RegisterInput, ResetPasswordWithCodeInput, SetPasswordInput, UpdateProfileInput } from "../validators/auth.schema";
 import { resolveActor } from "./actorResolver";
 
 export class AuthService {
@@ -191,6 +191,31 @@ export class AuthService {
       return this.issueTokens(actor.id, client, tx, actor.organizationId);
     });
     await this.firebase.revokeSessions(firebaseUid);
+    domainEvents.emit("user.passwordChanged", { organizationId: actor.organizationId, userId: actor.id });
+    return tokens;
+  }
+
+  /** For the My account page: whether this person has a password, signs in with Google, or both. */
+  signInMethods(actor: Actor): Promise<{ password: boolean; google: boolean }> {
+    return this.firebase.signInMethods(actor.email);
+  }
+
+  /**
+   * Adds a password to an account that only signs in with Google, so there is no "current password" to ask for.
+   * Proof it is really them is a Google sign-in done in the last few minutes with the account's own address.
+   */
+  async setPassword(actor: Actor, data: SetPasswordInput, client: ClientContext): Promise<TokenPairDTO> {
+    const identity = await this.firebase.verifyIdToken(data.idToken);
+    if (!identity.emailVerified || identity.email !== actor.email.toLowerCase()) throw AppError.badRequest(`Confirm with the Google account for ${actor.email}`);
+    if (Date.now() / 1000 - identity.authTime > 5 * 60) throw AppError.unauthorised("Please confirm with Google again and retry");
+    if ((await this.firebase.signInMethods(actor.email)).password) throw AppError.conflict("You already have a password. Use Change password instead.");
+    const firebaseUid = await this.firebase.upsertUserPassword(actor.email, data.newPassword, actor.name);
+    const tokens = await inTransaction(async (tx) => {
+      await this.users.update(actor.organizationId, actor.id, { firebaseUid }, tx);
+      await this.tokens.revokeAllForSubject("staff", actor.id, tx);
+      await this.audit.log(actor, { action: "update", entityType: "staff", entityId: actor.id, summary: "Added a password to their Google account" }, tx);
+      return this.issueTokens(actor.id, client, tx, actor.organizationId);
+    });
     domainEvents.emit("user.passwordChanged", { organizationId: actor.organizationId, userId: actor.id });
     return tokens;
   }

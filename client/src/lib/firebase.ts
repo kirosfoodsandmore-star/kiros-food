@@ -58,6 +58,16 @@ export async function signInWithGoogle(): Promise<string> {
   return result.user.getIdToken()
 }
 
+/** What went wrong with the Google window, in words a person can act on. Null when they simply closed it. */
+export function googleErrorMessage(err: unknown): string | null {
+  const code = (err as { code?: string } | null)?.code
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return null
+  if (code === "auth/popup-blocked") return "Your browser blocked the Google window. Allow pop-ups for this site and try again."
+  if (code === "auth/network-request-failed") return "Couldn't reach Google. Check your connection and try again."
+  if (code === "auth/unauthorized-domain") return "Google sign-in isn't allowed on this web address yet. Add it in Firebase under Authentication → Settings → Authorized domains."
+  return (err as Error | null)?.message || "Google sign-in failed. Please try again."
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<string> {
   const result = await signInWithEmailAndPassword(firebaseAuth(), email, password)
   return result.user.getIdToken()

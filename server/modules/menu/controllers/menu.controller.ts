@@ -82,7 +82,8 @@ export class MenuController {
     const { params, body } = input(req, updateGroupSchema);
     return svc().updateGroup(actorOf(req), params.id, body);
   });
-  static deleteGroup = handle("Option group deleted", (req) => svc().deleteGroup(actorOf(req), id(req)));
+  static duplicateGroup = handle("Option group duplicated", (req) => svc().duplicateGroup(actorOf(req), id(req)), 201);
+  static deleteGroup =handle("Option group deleted", (req) => svc().deleteGroup(actorOf(req), id(req)));
   static createOption = handle("Option added", (req) => {
     const { params, body } = input(req, createOptionSchema);
     return svc().createOption(actorOf(req), params.id, body);

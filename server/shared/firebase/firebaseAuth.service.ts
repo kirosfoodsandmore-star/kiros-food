@@ -13,6 +13,8 @@ export interface VerifiedIdentity {
   name: string | null;
   /** "google.com" | "password" | "phone" | … */
   provider: string;
+  /** When the person last actually signed in (seconds since the epoch), not when the token was refreshed. */
+  authTime: number;
 }
 
 export class FirebaseAuthService {
@@ -41,6 +43,7 @@ export class FirebaseAuthService {
         phone: decoded.phone_number ?? null,
         name: typeof decoded.name === "string" ? decoded.name : null,
         provider: decoded.firebase?.sign_in_provider ?? "unknown",
+        authTime: decoded.auth_time,
       };
     } catch (err) {
       console.warn("[firebase] id token rejected:", err instanceof Error ? err.message : err);
@@ -65,6 +68,16 @@ export class FirebaseAuthService {
       console.error("[firebase] could not save credentials", err instanceof Error ? err.message : err);
       throw AppError.unavailable("Could not save your credentials, please try again");
     }
+  }
+
+  /** Which ways this email can sign in: with a password, with Google, or both. */
+  async signInMethods(email: string): Promise<{ password: boolean; google: boolean }> {
+    this.assertConfigured();
+    const user = await getFirebaseAuth()
+      .getUserByEmail(email.trim().toLowerCase())
+      .catch(() => null);
+    const ids = user?.providerData.map((p) => p.providerId) ?? [];
+    return { password: ids.includes("password"), google: ids.includes("google.com") };
   }
 
   /** Ends every Firebase session for a uid (deactivation, password change). */

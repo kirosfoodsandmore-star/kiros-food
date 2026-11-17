@@ -69,6 +69,7 @@ adminOptionGroupRouter.get("/", ...view, C.listGroups);
 adminOptionGroupRouter.post("/", ...edit, validate(createGroupSchema), C.createGroup);
 adminOptionGroupRouter.put("/:id", ...edit, validate(updateGroupSchema), C.updateGroup);
 adminOptionGroupRouter.delete("/:id", ...edit, validate(menuIdSchema), C.deleteGroup);
+adminOptionGroupRouter.post("/:id/duplicate", ...edit, validate(menuIdSchema), C.duplicateGroup);
 adminOptionGroupRouter.post("/:id/options", ...edit, validate(createOptionSchema), C.createOption);
 adminOptionGroupRouter.put("/:id/options/:optionId", ...edit, validate(updateOptionSchema), C.updateOption);
 adminOptionGroupRouter.delete("/:id/options/:optionId", ...edit, validate(optionIdSchema), C.deleteOption);

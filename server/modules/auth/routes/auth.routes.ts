@@ -13,6 +13,7 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordWithCodeSchema,
+  setPasswordSchema,
   updateProfileSchema,
 } from "../validators/auth.schema";
 
@@ -32,6 +33,8 @@ router.post("/accept-invite", publicRoute("accept a staff invitation"), authRate
 
 router.get("/me", authMiddleware, requireAuthenticatedOnly(), AuthController.me);
 router.patch("/me", authMiddleware, requireAuthenticatedOnly(), validate(updateProfileSchema), AuthController.updateMe);
+router.get("/sign-in-methods", authMiddleware, requireAuthenticatedOnly(), AuthController.signInMethods);
+router.post("/set-password", authMiddleware, requireAuthenticatedOnly(), authRateLimiter, validate(setPasswordSchema), AuthController.setPassword);
 router.post("/change-password", authMiddleware, requireAuthenticatedOnly(), authRateLimiter, validate(changePasswordSchema), AuthController.changePassword);
 
 export default router;

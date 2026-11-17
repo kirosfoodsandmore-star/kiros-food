@@ -111,6 +111,7 @@ export const MenuEndpoints = {
   createGroup: (body: Body) => wrapCall<OptionGroup>("POST", `${A}/option-groups`, body),
   updateGroup: (id: string, body: Body) => wrapCall<OptionGroup>("PUT", `${A}/option-groups/${id}`, body),
   deleteGroup: (id: string) => wrapCall<null>("DELETE", `${A}/option-groups/${id}`),
+  duplicateGroup: (id: string) => wrapCall<OptionGroup>("POST", `${A}/option-groups/${id}/duplicate`),
   createOption: (groupId: string, body: Body) => wrapCall<OptionGroup>("POST", `${A}/option-groups/${groupId}/options`, body),
   updateOption: (groupId: string, optionId: string, body: Body) => wrapCall<OptionGroup>("PUT", `${A}/option-groups/${groupId}/options/${optionId}`, body),
   deleteOption: (groupId: string, optionId: string) => wrapCall<OptionGroup>("DELETE", `${A}/option-groups/${groupId}/options/${optionId}`),

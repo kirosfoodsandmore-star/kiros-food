@@ -42,6 +42,7 @@ export function useMenuMutations() {
     createGroup: m((b: Body) => MenuEndpoints.createGroup(b).then(unwrap)),
     updateGroup: m((v: { id: string; body: Body }) => MenuEndpoints.updateGroup(v.id, v.body).then(unwrap)),
     deleteGroup: m((id: string) => MenuEndpoints.deleteGroup(id).then(unwrap)),
+    duplicateGroup: m((id: string) => MenuEndpoints.duplicateGroup(id).then(unwrap)),
     createOption: m((v: { groupId: string; body: Body }) => MenuEndpoints.createOption(v.groupId, v.body).then(unwrap)),
     updateOption: m((v: { groupId: string; optionId: string; body: Body }) => MenuEndpoints.updateOption(v.groupId, v.optionId, v.body).then(unwrap)),
     deleteOption: m((v: { groupId: string; optionId: string }) => MenuEndpoints.deleteOption(v.groupId, v.optionId).then(unwrap)),

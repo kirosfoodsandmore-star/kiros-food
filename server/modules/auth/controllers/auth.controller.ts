@@ -10,6 +10,7 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordWithCodeSchema,
+  setPasswordSchema,
   updateProfileSchema,
 } from "../validators/auth.schema";
 
@@ -24,7 +25,9 @@ export class AuthController {
   static updateMe = handle("Profile updated", (req) => AuthService.Instance.updateProfile(actorOf(req), input(req, updateProfileSchema).body));
   static forgotPassword = handle("Reset code requested", (req) => AuthService.Instance.forgotPassword(input(req, forgotPasswordSchema).body.email));
   static resetPassword = handle("Password reset", (req) => AuthService.Instance.resetPasswordWithCode(input(req, resetPasswordWithCodeSchema).body));
-  static changePassword = handle("Password changed", (req) => AuthService.Instance.changePassword(actorOf(req), input(req, changePasswordSchema).body, clientOf(req)));
+  static signInMethods = handle("Sign-in methods fetched", (req) => AuthService.Instance.signInMethods(actorOf(req)));
+  static setPassword = handle("Password added", (req) => AuthService.Instance.setPassword(actorOf(req), input(req, setPasswordSchema).body, clientOf(req)));
+  static changePassword =handle("Password changed", (req) => AuthService.Instance.changePassword(actorOf(req), input(req, changePasswordSchema).body, clientOf(req)));
   static previewInvite = handle("Invitation fetched", (req) => StaffService.Instance.previewInvite(input(req, inviteTokenSchema).params.token));
   static acceptInvite = handle("Welcome aboard", (req) => AuthService.Instance.acceptInvite(input(req, acceptInviteSchema).body, clientOf(req)), 201);
 }

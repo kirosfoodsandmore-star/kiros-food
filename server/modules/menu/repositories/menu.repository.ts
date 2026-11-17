@@ -214,8 +214,8 @@ export class MenuRepository {
     return rows.map((r) => r.id);
   }
 
-  async createGroup(data: Omit<OptionGroup, "id" | "createdAt" | "updatedAt" | "deletedAt">): Promise<OptionGroup> {
-    const repo = db().getRepository(OptionGroupEntity);
+  async createGroup(data: Omit<OptionGroup, "id" | "createdAt" | "updatedAt" | "deletedAt">, tx?: Tx): Promise<OptionGroup> {
+    const repo = db(tx).getRepository(OptionGroupEntity);
     return repo.save(repo.create(data));
   }
 
@@ -231,8 +231,8 @@ export class MenuRepository {
     return db().getRepository(OptionEntity).findOne({ where: { id, organizationId } });
   }
 
-  async createOption(data: Omit<Option, "id" | "createdAt" | "updatedAt" | "deletedAt">): Promise<Option> {
-    const repo = db().getRepository(OptionEntity);
+  async createOption(data: Omit<Option, "id" | "createdAt" | "updatedAt" | "deletedAt">, tx?: Tx): Promise<Option> {
+    const repo = db(tx).getRepository(OptionEntity);
     return repo.save(repo.create(data));
   }
 

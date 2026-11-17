@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Copy, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { SimpleFormDialog, type FieldDef } from "@/components/admin/SimpleFormDialog"
@@ -35,8 +35,20 @@ export default function OptionGroupsPage() {
   const { data: groups, isLoading } = useOptionGroups()
   const m = useMenuMutations()
   const [groupDialog, setGroupDialog] = useState<{ open: boolean; group?: OptionGroup }>({ open: false })
-  const [optionDialog, setOptionDialog] = useState<{ open: boolean; groupId?: string; option?: Option }>({ open: false })
+  // `draft` is a copy of an existing option, opened as a new one to rename and save.
+  const [optionDialog, setOptionDialog] = useState<{ open: boolean; groupId?: string; option?: Option; draft?: Record<string, unknown> }>({ open: false })
   const [del, setDel] = useState<{ kind: "group" | "option"; groupId: string; id: string; name: string } | null>(null)
+
+  // Copies the group and all its options, then opens the copy so it can be renamed and adjusted straight away.
+  const duplicateGroup = async (g: OptionGroup) => {
+    try {
+      const copy = (await m.duplicateGroup.mutateAsync(g.id)) as OptionGroup
+      toast.success(`Copied as “${copy.name}”. Rename it or change its options.`)
+      setGroupDialog({ open: true, group: copy })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
 
   if (isLoading) return <PageLoader />
   return (
@@ -54,8 +66,9 @@ export default function OptionGroupsPage() {
                 </div>
                 {edit ? (
                   <div className="flex gap-0.5">
-                    <Button variant="ghost" size="icon-sm" onClick={() => setGroupDialog({ open: true, group: g })} aria-label="Edit group" data-cy="group-edit"><Pencil /></Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => setDel({ kind: "group", groupId: g.id, id: g.id, name: g.name })} aria-label="Delete group" data-cy="group-delete"><Trash2 className="text-destructive" /></Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => setGroupDialog({ open: true, group: g })} aria-label="Edit group" title="Edit group" data-cy="group-edit"><Pencil /></Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => void duplicateGroup(g)} disabled={m.duplicateGroup.isPending} aria-label="Duplicate group" title="Duplicate group (with all its options)" data-cy="group-duplicate"><Copy /></Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => setDel({ kind: "group", groupId: g.id, id: g.id, name: g.name })} aria-label="Delete group" title="Delete group" data-cy="group-delete"><Trash2 className="text-destructive" /></Button>
                   </div>
                 ) : null}
               </CardHeader>
@@ -65,7 +78,13 @@ export default function OptionGroupsPage() {
                     <li key={o.id} className="flex items-center gap-2 py-1.5" data-cy={`option-${o.id}`}>
                       <span className="flex-1">{o.name}{!o.isActive ? <Badge variant="neutral" className="ml-2">Off</Badge> : null}</span>
                       <span className="text-muted-foreground">{o.priceDelta === 0 ? "—" : <>{o.priceDelta > 0 ? "+" : "−"}<Money value={Math.abs(o.priceDelta)} fmt={fmt} /></>}</span>
-                      {edit ? <><Button variant="ghost" size="icon-sm" onClick={() => setOptionDialog({ open: true, groupId: g.id, option: o })} aria-label="Edit option"><Pencil /></Button><Button variant="ghost" size="icon-sm" onClick={() => setDel({ kind: "option", groupId: g.id, id: o.id, name: o.name })} aria-label="Delete option"><Trash2 className="text-destructive" /></Button></> : null}
+                      {edit ? (
+                        <>
+                          <Button variant="ghost" size="icon-sm" onClick={() => setOptionDialog({ open: true, groupId: g.id, option: o })} aria-label="Edit option" title="Edit option"><Pencil /></Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => setOptionDialog({ open: true, groupId: g.id, draft: { name: `${o.name} (copy)`, priceDelta: o.priceDelta, isActive: o.isActive } })} aria-label="Duplicate option" title="Duplicate option" data-cy="option-duplicate"><Copy /></Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => setDel({ kind: "option", groupId: g.id, id: o.id, name: o.name })} aria-label="Delete option" title="Delete option"><Trash2 className="text-destructive" /></Button>
+                        </>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -76,7 +95,7 @@ export default function OptionGroupsPage() {
         </div>
       )}
       <SimpleFormDialog open={groupDialog.open} onOpenChange={(o) => setGroupDialog({ open: o })} title={groupDialog.group ? "Edit option group" : "New option group"} fields={groupFields} initial={groupDialog.group as unknown as Record<string, unknown> | undefined} onSubmit={async (v) => { if (groupDialog.group) await m.updateGroup.mutateAsync({ id: groupDialog.group.id, body: v }); else await m.createGroup.mutateAsync(v) }} />
-      <SimpleFormDialog open={optionDialog.open} onOpenChange={(o) => setOptionDialog({ open: o })} title={optionDialog.option ? "Edit option" : "New option"} fields={optionFields} initial={optionDialog.option as unknown as Record<string, unknown> | undefined} onSubmit={async (v) => { if (optionDialog.option) await m.updateOption.mutateAsync({ groupId: optionDialog.groupId!, optionId: optionDialog.option.id, body: v }); else await m.createOption.mutateAsync({ groupId: optionDialog.groupId!, body: v }) }} />
+      <SimpleFormDialog open={optionDialog.open} onOpenChange={(o) => setOptionDialog({ open: o })} title={optionDialog.option ? "Edit option" : optionDialog.draft ? "Duplicate option" : "New option"} fields={optionFields} initial={(optionDialog.option as unknown as Record<string, unknown> | undefined) ?? optionDialog.draft} onSubmit={async (v) => { if (optionDialog.option) await m.updateOption.mutateAsync({ groupId: optionDialog.groupId!, optionId: optionDialog.option.id, body: v }); else await m.createOption.mutateAsync({ groupId: optionDialog.groupId!, body: v }) }} />
       <ConfirmDialog open={Boolean(del)} onOpenChange={(o) => !o && setDel(null)} title={`Delete “${del?.name}”?`} confirmLabel="Delete" loading={m.deleteGroup.isPending || m.deleteOption.isPending} onConfirm={async () => { if (!del) return; try { if (del.kind === "group") await m.deleteGroup.mutateAsync(del.id); else await m.deleteOption.mutateAsync({ groupId: del.groupId, optionId: del.id }) } catch (e) { toast.error((e as Error).message) } setDel(null) }} />
     </div>
   )

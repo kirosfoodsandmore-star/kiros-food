@@ -44,6 +44,14 @@ export const changePasswordSchema = z.object({
   }),
 });
 
+/** A Google sign-in done just now (proof it's really them) plus the password to add to their account. */
+export const setPasswordSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(20),
+    newPassword: passwordField,
+  }),
+});
+
 export const updateProfileSchema = z.object({
   body: z
     .object({
@@ -68,5 +76,6 @@ export type LoginInput = z.infer<typeof loginSchema>["body"];
 export type RegisterInput = z.infer<typeof registerSchema>["body"];
 export type FirebaseSignInInput = z.infer<typeof firebaseSignInSchema>["body"];
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>["body"];
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>["body"];
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>["body"];
 export type ResetPasswordWithCodeInput = z.infer<typeof resetPasswordWithCodeSchema>["body"];
