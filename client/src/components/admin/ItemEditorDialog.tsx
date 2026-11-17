@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/AuthContext"
 import { useMenuMutations, useOptionGroups } from "@/hooks/useAdminMenu"
 import { toMajor, toMinor } from "@/lib/money"
+import { cn } from "@/lib/utils"
 import type { Category, Item } from "@/types/admin.types"
 
 interface Props {
@@ -24,7 +25,7 @@ interface Props {
   defaultCategoryId: string
 }
 
-const blank = (categoryId: string) => ({ name: "", categoryId, basePrice: "0", description: "", isFeatured: false, isActive: true, optionGroupIds: [] as string[] })
+const blank = (categoryId: string) => ({ name: "", categoryId, basePrice: "0", description: "", isFeatured: false, isActive: true, optionGroupIds: [] as string[], pairsWithCategoryIds: [] as string[] })
 
 export function ItemEditorDialog({ open, onOpenChange, item, categories, defaultCategoryId }: Props) {
   const { can } = useAuth()
@@ -46,7 +47,7 @@ export function ItemEditorDialog({ open, onOpenChange, item, categories, default
   // (its photo list refreshes), and that must not wipe what's been typed into the form.
   useEffect(() => {
     if (!open) return
-    setForm(item ? { name: item.name, categoryId: item.categoryId, basePrice: toMajor(item.basePrice), description: item.description ?? "", isFeatured: item.isFeatured, isActive: item.isActive, optionGroupIds: item.optionGroupIds } : blank(defaultCategoryId))
+    setForm(item ? { name: item.name, categoryId: item.categoryId, basePrice: toMajor(item.basePrice), description: item.description ?? "", isFeatured: item.isFeatured, isActive: item.isActive, optionGroupIds: item.optionGroupIds, pairsWithCategoryIds: item.pairsWithCategoryIds ?? [] } : blank(defaultCategoryId))
     clearStaged()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item?.id, defaultCategoryId])
@@ -62,7 +63,7 @@ export function ItemEditorDialog({ open, onOpenChange, item, categories, default
 
   const submit = async () => {
     if (!form.name.trim()) return toast.error("Name is required")
-    const body: Record<string, unknown> = { name: form.name.trim(), categoryId: form.categoryId, description: form.description || null, isFeatured: form.isFeatured, isActive: form.isActive, optionGroupIds: form.optionGroupIds }
+    const body: Record<string, unknown> = { name: form.name.trim(), categoryId: form.categoryId, description: form.description || null, isFeatured: form.isFeatured, isActive: form.isActive, optionGroupIds: form.optionGroupIds, pairsWithCategoryIds: form.pairsWithCategoryIds.filter((id) => id !== form.categoryId) }
     if (canPrice || !item) body.basePrice = toMinor(form.basePrice)
     try {
       if (item) await updateItem.mutateAsync({ id: item.id, body })
@@ -137,6 +138,29 @@ export function ItemEditorDialog({ open, onOpenChange, item, categories, default
               </Select>
               <Button type="button" variant="outline" disabled={!addGroup} onClick={() => { setForm((f) => ({ ...f, optionGroupIds: [...f.optionGroupIds, addGroup] })); setAddGroup("") }} data-cy="item-add-group-btn">Add</Button>
             </div>
+          </Field>
+          <Field label="Goes well with" hint="Customers see these under “Goes well with” on this item's page, e.g. Smoothies and Juices for a salad. Leave empty to suggest favourites from other categories." className="sm:col-span-2">
+            {categories.filter((c) => c.id !== form.categoryId).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Add another category to suggest items from it.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2" data-cy="item-pairs">
+                {categories.filter((c) => c.id !== form.categoryId).map((c) => {
+                  const on = form.pairsWithCategoryIds.includes(c.id)
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setForm((f) => ({ ...f, pairsWithCategoryIds: on ? f.pairsWithCategoryIds.filter((x) => x !== c.id) : [...f.pairsWithCategoryIds, c.id] }))}
+                      className={cn("rounded-full border px-3 py-1 text-sm transition", on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
+                      data-cy={`item-pairs-${c.id}`}
+                    >
+                      {c.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </Field>
           <DialogFooter className="sm:col-span-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

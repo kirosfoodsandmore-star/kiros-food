@@ -21,7 +21,7 @@ export function ItemGallery({ name, hint, images, fallbackUrl }: Props) {
   const go = (step: number) => setIndex((current + step + urls.length) % urls.length)
 
   return (
-    <div className="space-y-3" data-cy="item-gallery">
+    <div className="min-w-0 space-y-3" data-cy="item-gallery">
       <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted shadow-sm">
         <FoodArt name={name} hint={hint} imageUrl={urls[current] ?? null} alt={many ? `${name}, photo ${current + 1} of ${urls.length}` : name} iconClassName="size-1/3" />
         {many ? (

@@ -40,6 +40,9 @@ export default function BranchDetailPage() {
   const [zoneDialog, setZoneDialog] = useState<{ open: boolean; zone?: DeliveryZone }>({ open: false })
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [hours, setHours] = useState<DayHours[]>([])
+  // Days ticked for "set these together" (0 = Sunday), and the times to give them.
+  const [picked, setPicked] = useState<Set<number>>(new Set())
+  const [bulk, setBulk] = useState({ opensAt: "09:00", closesAt: "21:00" })
   const [closure, setClosure] = useState({ date: "", reason: "" })
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number }>()
   const { locate, locating } = useCurrentPosition()
@@ -69,6 +72,7 @@ export default function BranchDetailPage() {
       const row = branch.hours.find((h) => h.weekday === weekday)
       return row ? { closed: false, opensAt: row.opensAt, closesAt: row.closesAt } : { closed: true, opensAt: "09:00", closesAt: "21:00" }
     }))
+    setPicked(new Set())
   }, [branch])
 
   if (isLoading) return <PageLoader />
@@ -77,6 +81,19 @@ export default function BranchDetailPage() {
   const saveHours = () => {
     const rows: OpeningHourRow[] = hours.flatMap((h, weekday) => (h.closed ? [] : [{ weekday, opensAt: h.opensAt, closesAt: h.closesAt }]))
     m.setHours.mutate({ id: branch.id, hours: rows }, { onSuccess: () => toast.success("Opening hours saved"), onError: fail })
+  }
+  // Several days at once: tick them, then give them the same hours (or close them). The change lands in the form;
+  // nothing is saved until "Save hours".
+  const allDays = WEEKDAYS.map((_, i) => i)
+  const pickDays = (days: number[]) => setPicked(new Set(days))
+  const togglePick = (day: number) => setPicked((s) => { const next = new Set(s); if (next.has(day)) next.delete(day); else next.add(day); return next })
+  const applyToPicked = (patch: Partial<DayHours>, message: string) => {
+    setHours((s) => s.map((x, i) => (picked.has(i) ? { ...x, ...patch } : x)))
+    toast.success(`${message} for ${picked.size} ${picked.size === 1 ? "day" : "days"}. Press Save hours to keep it.`)
+  }
+  const setPickedHours = () => {
+    if (!bulk.opensAt || !bulk.closesAt) return toast.error("Choose an opening and a closing time")
+    applyToPicked({ closed: false, opensAt: bulk.opensAt, closesAt: bulk.closesAt }, `Set ${bulk.opensAt}–${bulk.closesAt}`)
   }
   const toggleMenu = (menuId: string, on: boolean) => {
     const menuIds = on ? [...branch.menuIds, menuId] : branch.menuIds.filter((x) => x !== menuId)
@@ -93,10 +110,38 @@ export default function BranchDetailPage() {
         <TabsContent value="hours">
           <Card>
             <CardContent className="space-y-2 pt-5">
+              {edit ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b pb-2 text-xs text-muted-foreground">
+                  <label className="flex items-center gap-2">
+                    <Checkbox checked={picked.size === allDays.length ? true : picked.size > 0 ? "indeterminate" : false} onCheckedChange={() => pickDays(picked.size === allDays.length ? [] : allDays)} aria-label="Select all days" data-cy="hours-select-all" />
+                    {picked.size > 0 ? `${picked.size} of ${allDays.length} days selected` : "Tick days to set them together"}
+                  </label>
+                  <span className="ml-auto flex gap-3">
+                    <button type="button" className="text-primary hover:underline" onClick={() => pickDays([1, 2, 3, 4, 5])} data-cy="hours-pick-weekdays">Weekdays</button>
+                    <button type="button" className="text-primary hover:underline" onClick={() => pickDays([0, 6])} data-cy="hours-pick-weekend">Weekends</button>
+                  </span>
+                </div>
+              ) : null}
+              {edit && picked.size > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm" data-cy="hours-bulk">
+                  <Input type="time" value={bulk.opensAt} onChange={(e) => setBulk((b) => ({ ...b, opensAt: e.target.value }))} aria-label="Opens at, for the selected days" className="w-32" />
+                  <span className="text-muted-foreground">to</span>
+                  <Input type="time" value={bulk.closesAt} onChange={(e) => setBulk((b) => ({ ...b, closesAt: e.target.value }))} aria-label="Closes at, for the selected days" className="w-32" />
+                  <Button size="sm" onClick={setPickedHours} data-cy="hours-bulk-apply">Set hours</Button>
+                  <Button size="sm" variant="outline" onClick={() => applyToPicked({ closed: true }, "Marked closed")} data-cy="hours-bulk-close">Mark closed</Button>
+                  <Button size="sm" variant="ghost" onClick={() => pickDays([])} data-cy="hours-bulk-clear">Clear</Button>
+                  <p className="basis-full text-xs text-muted-foreground">Applies to the {picked.size === 1 ? "day" : `${picked.size} days`} ticked below. Press Save hours to keep the changes.</p>
+                </div>
+              ) : null}
               {hours.map((h, weekday) => (
                 // Mobile: day + checkbox on one line, the time range on the next. sm+: a single row.
-                <div key={weekday} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 border-b pb-2 text-sm last:border-0 sm:grid-cols-[6rem_auto_minmax(0,1fr)] sm:border-0 sm:pb-0" data-cy={`hours-${weekday}`}>
-                  <span className="font-medium">{WEEKDAYS[weekday]}</span>
+                <div key={weekday} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 border-b pb-2 text-sm last:border-0 sm:border-0 sm:pb-0 ${edit ? "sm:grid-cols-[8.5rem_auto_minmax(0,1fr)]" : "sm:grid-cols-[6rem_auto_minmax(0,1fr)]"} ${picked.has(weekday) ? "rounded-md bg-primary/5" : ""}`} data-cy={`hours-${weekday}`}>
+                  {edit ? (
+                    <label className="flex items-center gap-2 font-medium">
+                      <Checkbox checked={picked.has(weekday)} onCheckedChange={() => togglePick(weekday)} aria-label={`Select ${WEEKDAYS[weekday]}`} data-cy="hours-select" />
+                      {WEEKDAYS[weekday]}
+                    </label>
+                  ) : <span className="font-medium">{WEEKDAYS[weekday]}</span>}
                   <label className="flex items-center gap-2"><Checkbox checked={!h.closed} disabled={!edit} onCheckedChange={(v) => setHours((s) => s.map((x, i) => (i === weekday ? { ...x, closed: v !== true } : x)))} aria-label={`${WEEKDAYS[weekday]} open`} /> Open</label>
                   <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
                     <Input type="time" value={h.opensAt} disabled={h.closed || !edit} onChange={(e) => setHours((s) => s.map((x, i) => (i === weekday ? { ...x, opensAt: e.target.value } : x)))} aria-label={`${WEEKDAYS[weekday]} opens at`} className="min-w-0 flex-1" />

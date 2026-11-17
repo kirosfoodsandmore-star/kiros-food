@@ -105,9 +105,22 @@ export class StorefrontMenuService {
     await this.assertServes(organizationId, branchId, row.menuId);
     const soldOut = await this.availability.soldOutAt(branchId);
     const groups = this.buildGroups(await this.menus.groupRows([itemId]), soldOut.options).get(itemId) ?? [];
-    // Recommendations: featured items from the same menu, then siblings in the same category.
+    // "Goes well with": the categories the owner chose for this item (Admin → item → Goes well with). With none chosen,
+    // suggest favourites from the other categories first (a salad pairs with a drink, not another salad), and only then
+    // fall back to the item's own category.
     const siblings = (await this.menus.activeItemsForMenu(organizationId, row.menuId)).filter((i) => i.id !== itemId);
-    const picks = [...siblings.filter((i) => i.isFeatured), ...siblings.filter((i) => !i.isFeatured && i.categoryId === row.categoryId)].slice(0, 8);
+    const chosen = siblings.filter((i) => row.pairsWithCategoryIds.includes(i.categoryId));
+    const elsewhere = siblings.filter((i) => i.categoryId !== row.categoryId);
+    // Take one from each chosen category in turn, so a long category can't crowd the others out of the 12 slots.
+    const perCategory = row.pairsWithCategoryIds.map((id) => chosen.filter((i) => i.categoryId === id)).filter((list) => list.length > 0);
+    const mixed: typeof chosen = [];
+    for (let n = 0; mixed.length < 12 && perCategory.some((list) => n < list.length); n++) {
+      for (const list of perCategory) if (n < list.length && mixed.length < 12) mixed.push(list[n]);
+    }
+    const picks =
+      chosen.length > 0
+        ? mixed
+        : [...elsewhere.filter((i) => i.isFeatured), ...elsewhere.filter((i) => !i.isFeatured), ...siblings.filter((i) => i.categoryId === row.categoryId)].slice(0, 8);
     const pickGroups = this.buildGroups(await this.menus.groupRows(picks.map((i) => i.id)), soldOut.options);
     return {
       ...this.card(row, groups, soldOut.items),

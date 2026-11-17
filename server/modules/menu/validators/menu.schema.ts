@@ -34,6 +34,7 @@ const itemBody = z.object({
   description: optionalText(2000),
   basePrice: money,
   isFeatured: z.boolean().default(false),
+  pairsWithCategoryIds: z.array(uuid).max(30).default([]),
   isActive: z.boolean().default(true),
   sortOrder: sortOrder.default(0),
   optionGroupIds: z.array(uuid).max(30).default([]),

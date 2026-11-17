@@ -24,6 +24,7 @@ export interface ItemRow {
   /** Every photo in display order (cover first), without storage internals. */
   images: Array<{ id: string; url: string }>;
   isFeatured: boolean;
+  pairsWithCategoryIds: string[];
   isActive: boolean;
   sortOrder: number;
 }
@@ -46,7 +47,7 @@ const SELECT_ITEM_ROW = `
   SELECT i.id, i.category_id AS "categoryId", c.name AS "categoryName", c.menu_id AS "menuId", m.name AS "menuName", i.name, i.description,
          i.base_price AS "basePrice", i.image_url AS "imageUrl",
          (SELECT COALESCE(jsonb_agg(jsonb_build_object('id', p.e->>'id', 'url', p.e->>'url') ORDER BY p.n), '[]'::jsonb) FROM jsonb_array_elements(i.photos) WITH ORDINALITY AS p(e, n)) AS "images",
-         i.is_featured AS "isFeatured", i.is_active AS "isActive", i.sort_order AS "sortOrder"
+         i.is_featured AS "isFeatured", i.pairs_with_category_ids AS "pairsWithCategoryIds", i.is_active AS "isActive", i.sort_order AS "sortOrder"
   FROM items i JOIN categories c ON c.id = i.category_id AND c.deleted_at IS NULL JOIN menus m ON m.id = c.menu_id AND m.deleted_at IS NULL`;
 
 export class MenuRepository {

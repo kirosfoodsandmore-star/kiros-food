@@ -60,6 +60,8 @@ export interface ItemDTO {
   /** Every photo in display order, cover first. */
   images: ItemImageDTO[];
   isFeatured: boolean;
+  /** Categories this item's storefront page recommends from ("Goes well with"). */
+  pairsWithCategoryIds: string[];
   isActive: boolean;
   sortOrder: number;
   optionGroupIds: string[];

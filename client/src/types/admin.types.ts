@@ -193,6 +193,8 @@ export interface Item {
   /** Every photo, cover first. */
   images: ItemImage[]
   isFeatured: boolean
+  /** Categories this item's page recommends from ("Goes well with"). Empty = the default suggestions. */
+  pairsWithCategoryIds: string[]
   isActive: boolean
   sortOrder: number
   optionGroupIds: string[]

@@ -46,8 +46,8 @@ const SALAD_GROUPS: GroupSpec[] = [
   {
     name: "Protein add-on",
     minSelect: 0,
-    maxSelect: 1,
-    helpText: "Add one protein for an extra charge.",
+    maxSelect: 7,
+    helpText: "Add as many proteins as you like, each for an extra charge.",
     options: [["Shrimp", K(2500)], ["Chicken", K(2000)], ["Beef", K(2000)], ["Turkey", K(2500)], ["Gizzard", K(1500)], ["Fish", K(2000)], ["Bacon", K(2000)]],
   },
 ];
@@ -67,18 +67,25 @@ interface ItemSpec {
 interface CategorySpec {
   name: string;
   description: string | null;
+  /** Categories (by name) the items here recommend under "Goes well with". Left out = the default suggestions. */
+  goesWith?: string[];
   items: ItemSpec[];
 }
+
+/** Salads and shawarma pair with a drink, not with each other. */
+const DRINKS = ["Smoothies", "Juice blends", "Fresh juices"];
 
 const CATEGORIES: CategorySpec[] = [
   {
     name: "Build your own salad",
     description: "Pick a base, up to 10 fillings, 2 cravings and a dressing. Add a protein if you like.",
+    goesWith: DRINKS,
     items: [{ name: "Build Your Salad", price: K(5000), description: "Your salad, your way: one base, up to 10 fillings, 2 cravings and your choice of dressing.", featured: true, groups: SALAD_GROUPS.map((g) => g.name) }],
   },
   {
     name: "Signature salads",
     description: "Our favourite combinations, ready to order.",
+    goesWith: DRINKS,
     items: [
       { name: "Garden salad", price: K(6500), description: "Dressed with lime vinaigrette.", featured: true },
       { name: "Purple rain salad", price: K(6500), description: "Dressed with cilantro vinaigrette." },
@@ -92,6 +99,7 @@ const CATEGORIES: CategorySpec[] = [
   {
     name: "Shawarma, wraps & sandwiches",
     description: null,
+    goesWith: DRINKS,
     items: [
       { name: "Beef shawarma", price: K(5000), description: "Beef shawarma." },
       { name: "Chicken shawarma", price: K(4500), description: "Chicken shawarma.", featured: true },
@@ -177,9 +185,12 @@ export async function installFarmshopMenu(organizationId: string, sortOrder = 0)
 
   let itemCount = 0;
   const hiddenItems: string[] = [];
+  const categoryIds: Record<string, string> = {};
+  const goesWith: Array<{ itemId: string; categories: string[] }> = [];
   for (let ci = 0; ci < CATEGORIES.length; ci++) {
     const c = CATEGORIES[ci];
     const category = await menus.createCategory({ organizationId, menuId: menu.id, name: c.name, description: c.description, imageUrl: null, imagePublicId: null, sortOrder: ci });
+    categoryIds[c.name] = category.id;
     for (let ii = 0; ii < c.items.length; ii++) {
       const it = c.items[ii];
       const active = it.active ?? true;
@@ -193,13 +204,17 @@ export async function installFarmshopMenu(organizationId: string, sortOrder = 0)
         imagePublicId: null,
         photos: [],
         isFeatured: Boolean(it.featured),
+        pairsWithCategoryIds: [],
         isActive: active,
         sortOrder: ii,
       });
       if (it.groups?.length) await menus.setItemGroups(created.id, it.groups.map((n) => groupIds[n]));
+      if (c.goesWith?.length) goesWith.push({ itemId: created.id, categories: c.goesWith });
       itemCount++;
       if (!active) hiddenItems.push(it.name);
     }
   }
+  // "Goes well with" names categories, which only all exist once the loop above has made them.
+  for (const g of goesWith) await menus.updateItem(organizationId, g.itemId, { pairsWithCategoryIds: g.categories.map((n) => categoryIds[n]).filter(Boolean) });
   return { menuId: menu.id, itemCount, hiddenItems };
 }

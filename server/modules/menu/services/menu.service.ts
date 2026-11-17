@@ -147,12 +147,20 @@ export class MenuService {
     if (known.length !== new Set(groupIds).size) throw AppError.badRequest("One of the option groups does not exist");
   }
 
+  /** "Goes well with" may only name this restaurant's own categories. */
+  private async assertCategories(organizationId: string, categoryIds: string[]): Promise<void> {
+    if (categoryIds.length === 0) return;
+    const known = new Set((await this.repo.listCategories(organizationId)).map((c) => c.id));
+    if (!categoryIds.every((id) => known.has(id))) throw AppError.badRequest("One of the “goes well with” categories does not exist");
+  }
+
   async createItem(actor: Actor, data: ItemBody): Promise<ItemDTO> {
     assertPermission(actor, "menu.edit");
     if (data.basePrice > 0) assertPermission(actor, "menu.edit_prices", "You cannot set prices");
     const category = await this.repo.findCategory(actor.organizationId, data.categoryId);
     if (!category) throw AppError.notFound("Category not found");
     await this.assertGroups(actor.organizationId, data.optionGroupIds);
+    await this.assertCategories(actor.organizationId, data.pairsWithCategoryIds);
     const { optionGroupIds, ...fields } = data;
     const item = await inTransaction(async (tx) => {
       const created = await this.repo.createItem({ ...fields, organizationId: actor.organizationId, description: fields.description ?? null, imageUrl: null, imagePublicId: null, photos: [] }, tx);
@@ -176,6 +184,7 @@ export class MenuService {
       menuIds.push(category.menuId);
     }
     if (data.optionGroupIds) await this.assertGroups(actor.organizationId, data.optionGroupIds);
+    if (data.pairsWithCategoryIds) await this.assertCategories(actor.organizationId, data.pairsWithCategoryIds);
     const { optionGroupIds, ...fields } = data;
     await inTransaction(async (tx) => {
       if (Object.keys(fields).length > 0) await this.repo.updateItem(actor.organizationId, id, fields, tx);

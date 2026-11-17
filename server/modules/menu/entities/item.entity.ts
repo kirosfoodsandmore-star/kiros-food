@@ -1,5 +1,5 @@
 import { EntitySchema } from "typeorm";
-import { boolColumn, createdAt, deletedAt, intColumn, jsonColumn, manyToOne, moneyColumn, primaryId, textColumn, updatedAt, uuidColumn, varchar } from "../../../infrastructure/database/columns";
+import { boolColumn, createdAt, deletedAt, intColumn, jsonColumn, manyToOne, moneyColumn, primaryId, textColumn, updatedAt, uuidArrayColumn, uuidColumn, varchar } from "../../../infrastructure/database/columns";
 
 /** One stored photo. `id` is ours (stable for the API); `publicId` is the storage provider's handle for deleting it. */
 export interface ItemPhoto {
@@ -22,6 +22,8 @@ export interface Item {
   photos: ItemPhoto[];
   /** Shown in the home-page favourites carousel. */
   isFeatured: boolean;
+  /** Categories (in the same menu) whose items this item's page recommends. Empty = use the default suggestions. */
+  pairsWithCategoryIds: string[];
   isActive: boolean;
   sortOrder: number;
   createdAt: Date;
@@ -44,6 +46,7 @@ export const ItemEntity = new EntitySchema<Item>({
     imagePublicId: varchar("image_public_id", 255, true),
     photos: { ...jsonColumn("photos", false), default: () => "'[]'::jsonb" },
     isFeatured: boolColumn("is_featured", false),
+    pairsWithCategoryIds: uuidArrayColumn("pairs_with_category_ids"),
     isActive: boolColumn("is_active", true),
     sortOrder: intColumn("sort_order", 0),
     createdAt: createdAt(),

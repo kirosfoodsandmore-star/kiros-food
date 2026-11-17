@@ -87,7 +87,7 @@ export default function ItemPage() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 py-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 py-6 md:grid-cols-2">
         <Skeleton className="aspect-square" />
         <div className="space-y-3">
           <Skeleton className="h-8 w-2/3" />
@@ -100,12 +100,13 @@ export default function ItemPage() {
   if (error || !item) return <div className="py-8"><ErrorState message="This item could not be loaded." onRetry={() => void refetch()} /></div>
 
   return (
-    <div className="relative grid gap-6 py-6 md:grid-cols-2" data-cy="item-page">
+    // grid-cols-1 is minmax(0,1fr): without it the single column grows to fit its widest content (the "Goes well with" row) and pushes the picture past the screen edge on phones.
+    <div className="relative grid grid-cols-1 gap-6 py-6 md:grid-cols-2" data-cy="item-page">
       <Button variant="outline" size="icon" className="absolute right-0 top-6 z-10 rounded-full" onClick={() => navigate(`/${slug}/menu`)} aria-label="Back to menu" data-cy="item-close">
         <X />
       </Button>
       <ItemGallery key={item.id} name={item.name} hint={item.categoryName} images={item.images ?? []} fallbackUrl={item.imageUrl} />
-      <div className="space-y-5 pb-28 md:pb-0">
+      <div className="min-w-0 space-y-5 pb-28 md:pb-0">
         <nav className="flex items-center gap-1 text-xs text-muted-foreground" aria-label="Breadcrumb">
           <Link to={`/${slug}/menu`} className="hover:underline">{item.menuName}</Link>
           <ChevronRight className="size-3" />
