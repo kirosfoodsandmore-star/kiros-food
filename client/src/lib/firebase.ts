@@ -51,7 +51,10 @@ export async function currentIdToken(forceRefresh = false): Promise<string | nul
 }
 
 export async function signInWithGoogle(): Promise<string> {
-  const result = await signInWithPopup(firebaseAuth(), new GoogleAuthProvider())
+  const provider = new GoogleAuthProvider()
+  // Always show the account picker, so someone with several Google accounts (work and personal) chooses the right one.
+  provider.setCustomParameters({ prompt: "select_account" })
+  const result = await signInWithPopup(firebaseAuth(), provider)
   return result.user.getIdToken()
 }
 

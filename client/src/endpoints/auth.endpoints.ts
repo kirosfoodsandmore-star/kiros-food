@@ -15,5 +15,5 @@ export const AuthEndpoints = {
   forgotPassword: (email: string) => wrapCall<{ message: string; devCode?: string }>("POST", "/api/v1/auth/forgot-password", { email }),
   resetPassword: (body: { email: string; code: string; newPassword: string }) => wrapCall<{ message: string }>("POST", "/api/v1/auth/reset-password", body),
   previewInvite: (token: string) => wrapCall<{ email: string; name: string; roleName: string; expiresAt: string }>("GET", `/api/v1/auth/invite/${encodeURIComponent(token)}`),
-  acceptInvite: (body: { token: string; password: string; name?: string; phone?: string | null }) => wrapCall<LoginResult>("POST", "/api/v1/auth/accept-invite", body),
+  acceptInvite: (body: { token: string; password?: string; idToken?: string; name?: string; phone?: string | null }) => wrapCall<LoginResult>("POST", "/api/v1/auth/accept-invite", body),
 }

@@ -8,10 +8,9 @@ import { PermissionCache } from "../../../shared/access/permissionCache";
 import { branchScope } from "../../../shared/access/scope";
 import { AppError } from "../../../shared/errors/AppError";
 import { domainEvents } from "../../../shared/events/domainEvents";
-import { FIREBASE_MANAGED_PASSWORD, FirebaseAuthService } from "../../../shared/firebase/firebaseAuth.service";
+import { FirebaseAuthService } from "../../../shared/firebase/firebaseAuth.service";
 import type { Actor } from "../../../shared/types/actor";
 import { hashToken, randomToken } from "../../../shared/utils/jwt";
-import { hashPassword, verifyPassword } from "../../../shared/utils/password";
 import { WILDCARD, type PermissionCode } from "../../access/catalog/permissions.catalog";
 import { OWNER_ROLE_KEY } from "../../access/catalog/roles.catalog";
 import { RoleRepository } from "../../access/repositories/role.repository";
@@ -125,10 +124,18 @@ export class StaffService {
     }
     if (await this.users.existsByEmail(invite.email)) throw AppError.conflict("A staff account with this email already exists");
     const name = data.name ?? invite.name;
-    let passwordHash = FIREBASE_MANAGED_PASSWORD;
-    let firebaseUid: string | null = null;
-    if (FirebaseAuthService.Instance.isConfigured) firebaseUid = await FirebaseAuthService.Instance.upsertUserPassword(invite.email, data.password, name);
-    else passwordHash = await hashPassword(data.password);
+    const firebase = FirebaseAuthService.Instance;
+    let firebaseUid: string;
+    if (data.idToken) {
+      // Google: the account must be the one the invitation was emailed to.
+      const identity = await firebase.verifyIdToken(data.idToken);
+      if (!identity.emailVerified || identity.email !== invite.email.toLowerCase()) {
+        throw AppError.badRequest(`Sign in with the Google account for ${invite.email} to accept this invitation`);
+      }
+      firebaseUid = identity.uid;
+    } else {
+      firebaseUid = await firebase.upsertUserPassword(invite.email, data.password!, name);
+    }
 
     const userId = await inTransaction(async (tx) => {
       const id = await this.users.create(
@@ -137,7 +144,6 @@ export class StaffService {
           roleId: invite.roleId,
           name,
           email: invite.email,
-          passwordHash,
           firebaseUid,
           phone: data.phone ?? null,
           branchIds: invite.branchIds,
@@ -211,11 +217,7 @@ export class StaffService {
   async transferOwnership(actor: Actor, targetUserId: string, password: string): Promise<void> {
     if (!hasWildcard(actor)) throw AppError.forbidden("Only an Owner can transfer ownership");
     if (targetUserId === actor.id) throw AppError.badRequest("Choose another staff member");
-    const hash = await this.users.findPasswordHash(actor.id);
-    const ok = FirebaseAuthService.Instance.isConfigured
-      ? (await FirebaseAuthService.Instance.verifyUserPassword(actor.email, password)).ok
-      : await verifyPassword(password, hash ?? "");
-    if (!ok) throw AppError.unauthorised("Your password is incorrect");
+    if (!(await FirebaseAuthService.Instance.checkPassword(actor.email, password))) throw AppError.unauthorised("Your password is incorrect");
     const target = await this.get(actor, targetUserId);
     if (!target.isActive) throw AppError.badRequest("The new owner must be an active staff member");
     const ownerRole = await this.roles.findByKey(actor.organizationId, OWNER_ROLE_KEY);

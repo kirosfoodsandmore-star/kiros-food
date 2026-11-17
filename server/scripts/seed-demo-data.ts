@@ -5,7 +5,7 @@
 //
 //   Staff logins (all Password123): manager.<branch>@kiros.test, kitchen.<branch>@kiros.test, rider.<branch>@kiros.test
 //   Idempotent: skips if demo customers already exist. SEED_DEMO_RESET=1 wipes the previous demo activity first.
-import bcrypt from "bcryptjs";
+import { FirebaseAuthService } from "../shared/firebase/firebaseAuth.service";
 import "reflect-metadata";
 import { AppDataSource } from "../infrastructure/database/dataSource";
 
@@ -130,7 +130,8 @@ async function main(): Promise<void> {
     }
 
     // ── Staff ──────────────────────────────────────────────────────────────────
-    const passwordHash = bcrypt.hashSync("Password123", 10);
+    // Passwords live in Firebase only: each demo account is created there (password Password123) and the row keeps its uid.
+    const demoLogin = (email: string, name: string) => FirebaseAuthService.Instance.upsertUserPassword(email, "Password123", name);
     const staffByBranch: Record<string, { manager: { id: string; name: string }; riders: Array<{ id: string; name: string }> }> = {};
     for (const b of branches) {
       const tag = slugify(b.name);
@@ -138,7 +139,7 @@ async function main(): Promise<void> {
         const email = `${who}.${tag}@kiros.test`;
         const found = await tq(`SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL`, [email]);
         if (found.length) return { id: found[0].id as string, name };
-        const u = await insert(tq, "users", { organization_id: org, role_id: roles[role], name, email, password_hash: passwordHash, phone, branch_ids: [b.id], all_branches: false, is_active: true, last_login_at: addMin(now, -int(5, 2000)), last_seen_at: addMin(now, -int(1, 120)) }, true);
+        const u = await insert(tq, "users", { organization_id: org, role_id: roles[role], name, email, firebase_uid: await demoLogin(email, name), phone, branch_ids: [b.id], all_branches: false, is_active: true, last_login_at: addMin(now, -int(5, 2000)), last_seen_at: addMin(now, -int(1, 120)) }, true);
         return { id: u.id as string, name };
       };
       const manager = await mk("branch_manager", "manager", `${pick(FIRST)} ${pick(LAST)}`, `+23480${int(10000000, 99999999)}`);
@@ -149,11 +150,11 @@ async function main(): Promise<void> {
     }
     const opsEmail = "ops@kiros.test";
     if (!(await tq(`SELECT 1 FROM users WHERE email = $1 AND deleted_at IS NULL`, [opsEmail])).length) {
-      await insert(tq, "users", { organization_id: org, role_id: roles.branch_manager, name: "Ops Manager (Lagos Mainland)", email: opsEmail, password_hash: passwordHash, phone: "+2348099990000", branch_ids: branches.filter((b) => ["Ikeja GRA", "Yaba", "Surulere"].includes(b.name)).map((b) => b.id), all_branches: false, is_active: true, last_login_at: addMin(now, -90) });
+      await insert(tq, "users", { organization_id: org, role_id: roles.branch_manager, name: "Ops Manager (Lagos Mainland)", email: opsEmail, firebase_uid: await demoLogin(opsEmail, "Ops Manager (Lagos Mainland)"), phone: "+2348099990000", branch_ids: branches.filter((b) => ["Ikeja GRA", "Yaba", "Surulere"].includes(b.name)).map((b) => b.id), all_branches: false, is_active: true, last_login_at: addMin(now, -90) });
     }
     // One deactivated ex-employee for the staff-management screen.
     if (!(await tq(`SELECT 1 FROM users WHERE email = $1`, ["former.employee@kiros.test"])).length) {
-      await insert(tq, "users", { organization_id: org, role_id: roles.kitchen_staff, name: "Former Employee", email: "former.employee@kiros.test", password_hash: passwordHash, phone: null, branch_ids: [branches[0].id], all_branches: false, is_active: false });
+      await insert(tq, "users", { organization_id: org, role_id: roles.kitchen_staff, name: "Former Employee", email: "former.employee@kiros.test", phone: null, branch_ids: [branches[0].id], all_branches: false, is_active: false });
     }
 
     // ── Promo codes ────────────────────────────────────────────────────────────

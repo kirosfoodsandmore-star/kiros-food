@@ -55,8 +55,8 @@ export class BranchRepository {
     await db(tx).getRepository(BranchEntity).update({ id, organizationId }, data);
   }
 
-  async softDelete(organizationId: string, id: string): Promise<void> {
-    await db().getRepository(BranchEntity).softDelete({ id, organizationId });
+  async softDelete(organizationId: string, id: string, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(BranchEntity).softDelete({ id, organizationId });
   }
 
   async countActive(organizationId: string): Promise<number> {

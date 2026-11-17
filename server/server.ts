@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   EmailNotifierService.Instance.register();
   DeliveryNotifierService.Instance.register();
   console.log(emailConfigured() ? `[mail] email on (${env.email.provider === "script" ? "Apps Script relay" : "Gmail"})` : "[mail] email off — EMAIL_* not set");
-  console.log(env.firebase.configured ? "[firebase] auth + Firestore on" : "[firebase] not configured — bcrypt sign-in fallback, chat off");
+  console.log(env.firebase.configured ? "[firebase] auth + Firestore on" : "[firebase] NOT configured — staff sign-in is unavailable (passwords live only in Firebase), chat off");
   console.log(env.firebase.configured ? "[push] FCM notifications on" : "[push] FCM notifications off — Firebase service account not set");
   console.log(env.cloudinary.configured ? "[storage] Cloudinary on" : "[storage] Cloudinary not configured — uploads disabled");
 

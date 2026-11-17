@@ -6,6 +6,7 @@ import { BranchController } from "../controllers/branch.controller";
 import {
   addClosureSchema,
   branchIdSchema,
+  bulkDeleteBranchesSchema,
   closureIdSchema,
   createBranchSchema,
   createZoneSchema,
@@ -25,6 +26,7 @@ import {
 export const adminBranchRouter = Router();
 adminBranchRouter.get("/", authMiddleware, requirePermission("branches.view"), validate(listBranchesQuerySchema), BranchController.list);
 adminBranchRouter.post("/", authMiddleware, requirePermission("branches.edit"), validate(createBranchSchema), BranchController.create);
+adminBranchRouter.post("/bulk-delete", authMiddleware, requirePermission("branches.edit"), validate(bulkDeleteBranchesSchema), BranchController.removeMany);
 adminBranchRouter.get("/:id", authMiddleware, requirePermission("branches.view"), validate(branchIdSchema), BranchController.get);
 adminBranchRouter.put("/:id", authMiddleware, requirePermission("branches.edit"), validate(updateBranchSchema), BranchController.update);
 adminBranchRouter.delete("/:id", authMiddleware, requirePermission("branches.edit"), validate(branchIdSchema), BranchController.remove);

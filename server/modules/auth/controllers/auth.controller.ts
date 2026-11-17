@@ -6,7 +6,6 @@ import {
   changePasswordSchema,
   firebaseSignInSchema,
   forgotPasswordSchema,
-  googleSignInSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
@@ -19,7 +18,6 @@ export class AuthController {
   static signupStatus = handle("Sign-up status fetched", () => AuthService.Instance.signupStatus());
   static register = handle("Restaurant created", (req) => AuthService.Instance.register(input(req, registerSchema).body, clientOf(req)), 201);
   static firebase = handle("Signed in", (req) => AuthService.Instance.firebaseSignIn(input(req, firebaseSignInSchema).body, clientOf(req)));
-  static google = handle("Signed in with Google", (req) => AuthService.Instance.googleSignIn(input(req, googleSignInSchema).body, clientOf(req)));
   static refresh = handle("Session refreshed", (req) => AuthService.Instance.refresh(input(req, refreshSchema).body.refreshToken, clientOf(req)));
   static logout = handle("Signed out", (req) => AuthService.Instance.logout(input(req, refreshSchema).body.refreshToken));
   static me = handle("Session fetched", (req) => AuthService.Instance.session(actorOf(req)));

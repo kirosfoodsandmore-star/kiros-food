@@ -9,7 +9,6 @@ import {
   changePasswordSchema,
   firebaseSignInSchema,
   forgotPasswordSchema,
-  googleSignInSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
@@ -24,7 +23,6 @@ router.post("/login", publicRoute("staff sign-in"), authRateLimiter, validate(lo
 router.get("/signup-status", publicRoute("check whether restaurant sign-up is open"), AuthController.signupStatus);
 router.post("/register",publicRoute("create a restaurant and its owner"), authRateLimiter, validate(registerSchema), AuthController.register);
 router.post("/firebase", publicRoute("sign in with a Firebase ID token (Google / email)"), authRateLimiter, validate(firebaseSignInSchema), AuthController.firebase);
-router.post("/google", publicRoute("sign in with a Google ID token"), authRateLimiter, validate(googleSignInSchema), AuthController.google);
 router.post("/refresh", publicRoute("token refresh"), authRateLimiter, validate(refreshSchema), AuthController.refresh);
 router.post("/logout", publicRoute("revoke refresh token"), validate(refreshSchema), AuthController.logout);
 router.post("/forgot-password", publicRoute("request a password reset code"), authRateLimiter, validate(forgotPasswordSchema), AuthController.forgotPassword);

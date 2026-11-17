@@ -1,19 +1,17 @@
-// Staff authentication. Firebase Authentication is the identity provider (email/password and Google);
-// the server verifies with Firebase, then issues its own short-lived access JWT + rotating refresh
-// token so permissions are always resolved from the database. Without Firebase credentials the
-// server falls back to bcrypt so local development still works.
-import crypto from "crypto";
+// Staff authentication. Firebase Authentication is the identity provider (email/password and Google) and
+// the only place a password exists: Postgres keeps just the Firebase uid. The server verifies with Firebase,
+// then issues its own short-lived access JWT + rotating refresh token so permissions are always resolved
+// from the database.
 import { env } from "../../../config/env";
 import { inTransaction } from "../../../infrastructure/database/transaction";
 import { isPlatformAdmin } from "../../../shared/access/can";
 import { PermissionCache } from "../../../shared/access/permissionCache";
 import { AppError } from "../../../shared/errors/AppError";
 import { domainEvents } from "../../../shared/events/domainEvents";
-import { FIREBASE_MANAGED_PASSWORD, FirebaseAuthService } from "../../../shared/firebase/firebaseAuth.service";
+import { FirebaseAuthService } from "../../../shared/firebase/firebaseAuth.service";
 import type { ClientContext } from "../../../shared/http/handler";
 import type { Actor } from "../../../shared/types/actor";
 import { hashRefreshToken, hashToken, newRefreshToken, signAccessToken, sixDigitCode, timingSafeEqualString } from "../../../shared/utils/jwt";
-import { dummyHash, hashPassword, verifyPassword } from "../../../shared/utils/password";
 import { AuditService } from "../../audit/services/audit.service";
 import { OnboardingService } from "../../organization/services/onboarding.service";
 import { OrganizationService } from "../../organization/services/organization.service";
@@ -40,36 +38,13 @@ export class AuthService {
   // ── Sign in / up ───────────────────────────────────────────────────────────
 
   async login(data: LoginInput, client: ClientContext): Promise<LoginResultDTO> {
-    const creds = await this.users.findCredentialsByEmail(data.email);
-    if (!creds) {
-      await verifyPassword(data.password, dummyHash());
-      throw AppError.unauthorised("Incorrect email or password");
-    }
-    const ok = await this.verifyAndMigratePassword(data.email, creds.id, creds.organizationId, creds.passwordHash, data.password);
-    if (!ok) throw AppError.unauthorised("Incorrect email or password");
+    // Firebase is asked first, for unknown emails too, so neither the answer nor the timing reveals which emails have accounts.
+    const uid = await this.firebase.checkPassword(data.email, data.password);
+    const creds = uid ? await this.users.findCredentialsByEmail(data.email) : null;
+    if (!uid || !creds) throw AppError.unauthorised("Incorrect email or password");
     if (!creds.isActive) throw AppError.forbidden("Your account has been deactivated. Contact the restaurant owner.");
+    if (creds.firebaseUid !== uid) await this.users.update(creds.organizationId, creds.id, { firebaseUid: uid });
     return this.complete(creds.id, creds.organizationId, client, "password");
-  }
-
-  /**
-   * Firebase holds the password: verify there, and move a pre-Firebase bcrypt account over on first
-   * successful sign-in so no password hash lingers in Postgres.
-   */
-  private async verifyAndMigratePassword(email: string, userId: string, organizationId: string, stored: string | null, plain: string): Promise<boolean> {
-    if (this.firebase.isConfigured) {
-      const result = await this.firebase.verifyUserPassword(email, plain);
-      if (result.ok) {
-        if (stored !== FIREBASE_MANAGED_PASSWORD) await this.users.update(organizationId, userId, { passwordHash: FIREBASE_MANAGED_PASSWORD, firebaseUid: result.uid });
-        return true;
-      }
-      if (stored && stored !== FIREBASE_MANAGED_PASSWORD && (await verifyPassword(plain, stored))) {
-        const uid = await this.firebase.upsertUserPassword(email, plain);
-        await this.users.update(organizationId, userId, { passwordHash: FIREBASE_MANAGED_PASSWORD, firebaseUid: uid });
-        return true;
-      }
-      return false;
-    }
-    return verifyPassword(plain, stored ?? dummyHash());
   }
 
   /** Whether the public "Create your restaurant" page works right now (the admin login hides the link when it doesn't). */
@@ -99,16 +74,10 @@ export class AuthService {
     return this.signInByIdentity(identity.email, identity.name, identity.uid, identity.provider, data, client);
   }
 
-  /** Raw Google ID token (clients using Google Identity Services directly). */
-  async googleSignIn(data: FirebaseSignInInput, client: ClientContext): Promise<LoginResultDTO> {
-    const google = await this.firebase.verifyGoogleIdToken(data.idToken);
-    return this.signInByIdentity(google.email, google.name, null, "google.com", data, client);
-  }
-
   private async signInByIdentity(
     email: string,
     name: string | null,
-    firebaseUid: string | null,
+    firebaseUid: string,
     provider: string,
     data: FirebaseSignInInput,
     client: ClientContext
@@ -116,7 +85,7 @@ export class AuthService {
     const existing = await this.users.findCredentialsByEmail(email);
     if (existing) {
       if (!existing.isActive) throw AppError.forbidden("Your account has been deactivated. Contact the restaurant owner.");
-      if (firebaseUid && existing.firebaseUid !== firebaseUid) await this.users.update(existing.organizationId, existing.id, { firebaseUid });
+      if (existing.firebaseUid !== firebaseUid) await this.users.update(existing.organizationId, existing.id, { firebaseUid });
       return this.complete(existing.id, existing.organizationId, client, provider);
     }
     // Unknown email: offer to create a restaurant only while sign-up is open; otherwise the person needs an invite.
@@ -131,7 +100,7 @@ export class AuthService {
       slug: data.slug ?? null,
       ownerName: name || email.split("@")[0],
       ownerEmail: email,
-      ownerPassword: firebaseUid ? null : `Ggl_${crypto.randomBytes(12).toString("hex")}1a`,
+      ownerPassword: null,
       firebaseUid,
     });
     domainEvents.emit("restaurant.registered", { organizationId: created.organizationId, ownerUserId: created.ownerUserId, method: "google" });
@@ -212,16 +181,11 @@ export class AuthService {
   // ── Passwords ──────────────────────────────────────────────────────────────
 
   async changePassword(actor: Actor, data: ChangePasswordInput, client: ClientContext): Promise<TokenPairDTO> {
-    const hash = await this.users.findPasswordHash(actor.id);
-    const ok = await this.verifyAndMigratePassword(actor.email, actor.id, actor.organizationId, hash, data.currentPassword);
-    if (!ok) throw AppError.badRequest("Your current password is incorrect");
+    if (!(await this.firebase.checkPassword(actor.email, data.currentPassword))) throw AppError.badRequest("Your current password is incorrect");
     if (data.currentPassword === data.newPassword) throw AppError.badRequest("Choose a new password you haven't used here");
-    let passwordHash = FIREBASE_MANAGED_PASSWORD;
-    let firebaseUid: string | null = null;
-    if (this.firebase.isConfigured) firebaseUid = await this.firebase.upsertUserPassword(actor.email, data.newPassword, actor.name);
-    else passwordHash = await hashPassword(data.newPassword);
+    const firebaseUid = await this.firebase.upsertUserPassword(actor.email, data.newPassword, actor.name);
     const tokens = await inTransaction(async (tx) => {
-      await this.users.update(actor.organizationId, actor.id, { passwordHash, ...(firebaseUid ? { firebaseUid } : {}) }, tx);
+      await this.users.update(actor.organizationId, actor.id, { firebaseUid }, tx);
       await this.tokens.revokeAllForSubject("staff", actor.id, tx);
       await this.audit.log(actor, { action: "update", entityType: "staff", entityId: actor.id, summary: "Changed own password" }, tx);
       return this.issueTokens(actor.id, client, tx, actor.organizationId);
@@ -233,6 +197,7 @@ export class AuthService {
 
   /** Always answers the same way so it cannot be used to discover which emails have accounts. */
   async forgotPassword(email: string): Promise<{ message: string; devCode?: string }> {
+    this.firebase.assertConfigured();
     const message = "If an account exists for that email, a reset code has been sent to it.";
     const user = await this.users.findContactByEmail(email);
     if (!user || !user.isActive) return { message };
@@ -247,8 +212,7 @@ export class AuthService {
     const invalid = AppError.badRequest("That code is wrong or has expired. Request a new one.");
     const user = await this.users.findContactByEmail(data.email);
     if (!user || !user.isActive) throw invalid;
-    let passwordHash = FIREBASE_MANAGED_PASSWORD;
-    if (!this.firebase.isConfigured) passwordHash = await hashPassword(data.newPassword);
+    this.firebase.assertConfigured();
     let firebaseUid: string | null = null;
     const ok = await inTransaction(async (tx) => {
       const reset = await this.resets.activeForUpdate(user.id, tx);
@@ -257,9 +221,9 @@ export class AuthService {
         await this.resets.addAttempt(reset.id, tx);
         return false;
       }
-      if (this.firebase.isConfigured) firebaseUid = await this.firebase.upsertUserPassword(user.email, data.newPassword, user.name);
+      firebaseUid = await this.firebase.upsertUserPassword(user.email, data.newPassword, user.name);
       await this.resets.markUsed(reset.id, tx);
-      await this.users.update(user.organizationId, user.id, { passwordHash, ...(firebaseUid ? { firebaseUid } : {}) }, tx);
+      await this.users.update(user.organizationId, user.id, { firebaseUid }, tx);
       await this.tokens.revokeAllForSubject("staff", user.id, tx);
       await this.audit.record(null, user.organizationId, { action: "update", entityType: "staff", entityId: user.id, summary: `${user.name} reset their password by email` }, tx);
       return true;

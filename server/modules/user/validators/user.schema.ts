@@ -42,13 +42,17 @@ export const updateStaffSchema = z.object({
 
 export const staffIdSchema = z.object({ params: idParams });
 
+/** The invitee either chooses a password (kept by Firebase) or continues with the Google account the invite was sent to. */
 export const acceptInviteSchema = z.object({
-  body: z.object({
-    token: z.string().min(16).max(200),
-    password: z.string().regex(PASSWORD_RULE, "Password must be 8–72 characters and include a letter and a number"),
-    name: requiredText(120).optional(),
-    phone: phone.optional().nullable(),
-  }),
+  body: z
+    .object({
+      token: z.string().min(16).max(200),
+      password: z.string().regex(PASSWORD_RULE, "Password must be 8–72 characters and include a letter and a number").optional(),
+      idToken: z.string().min(20).optional(),
+      name: requiredText(120).optional(),
+      phone: phone.optional().nullable(),
+    })
+    .refine((b) => Boolean(b.password) !== Boolean(b.idToken), "Choose a password or continue with Google"),
 });
 
 export const inviteTokenSchema = z.object({ params: z.object({ token: z.string().min(16).max(200) }) });

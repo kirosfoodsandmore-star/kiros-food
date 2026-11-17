@@ -16,7 +16,7 @@ npm run dev                 # http://localhost:4000
 
 `npm run typecheck` must pass before any change is complete.
 
-Without Firebase credentials the server falls back to bcrypt passwords for staff sign-in so local development works; order chat needs Firebase. Customers do not: they can check out as guests, and optionally sign up with an emailed code (no Firebase, no SMS).
+Staff sign-in (email and password, or Google) needs Firebase credentials: passwords live only in Firebase Authentication, and Postgres stores just the Firebase uid, never a password or hash. Without the credentials the API answers 503 on sign-in. Order chat needs Firebase too. Customers do not: they can check out as guests, and optionally sign up with an emailed code (no Firebase, no SMS).
 
 ## Surfaces
 

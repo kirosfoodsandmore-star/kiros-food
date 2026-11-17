@@ -115,4 +115,4 @@ cd server && cp .env.example .env
 npm install && npm run migration:run && npm run seed && npm run dev
 ```
 
-Without Firebase credentials: staff sign-in uses bcrypt and order chat is unavailable (customers can still check out as guests and sign up by email). Without Cloudinary: uploads answer 503. Without email settings: emails are logged and skipped.
+Without Firebase credentials: nobody can sign in to the admin (passwords live only in Firebase) and order chat is unavailable (customers can still check out as guests and sign up by email). For Google sign-in, enable the Google provider in Firebase → Authentication → Sign-in method, and add every domain the app is served from under Authentication → Settings → Authorized domains. Without Cloudinary: uploads answer 503. Without email settings: emails are logged and skipped.

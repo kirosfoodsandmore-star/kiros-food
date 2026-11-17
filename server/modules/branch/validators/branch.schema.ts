@@ -26,6 +26,7 @@ export const updateBranchSchema = z.object({
   body: branchBody.partial().refine((b) => Object.keys(b).length > 0, "Nothing to update"),
 });
 export const branchIdSchema = z.object({ params: idParams });
+export const bulkDeleteBranchesSchema = z.object({ body: z.object({ ids: z.array(uuid).min(1).max(100) }) });
 
 export const pauseBranchSchema = z.object({
   params: idParams,

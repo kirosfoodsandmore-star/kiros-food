@@ -74,13 +74,29 @@ export class BranchService {
   }
 
   async remove(actor: Actor, id: string): Promise<void> {
+    await this.removeMany(actor, [id]);
+  }
+
+  /** Deletes several branches together. Every one is checked first, so either all of them go or none do. */
+  async removeMany(actor: Actor, ids: string[]): Promise<{ deleted: number }> {
     assertPermission(actor, "branches.edit");
-    const branch = await this.branches.findById(actor.organizationId, id);
-    if (!branch) throw AppError.notFound("Branch not found");
-    if ((await this.branches.countActive(actor.organizationId)) <= 1 && branch.isActive) throw AppError.conflict("A restaurant needs at least one branch");
-    await this.branches.softDelete(actor.organizationId, id);
-    await this.organizations.clearDefaultBranch(actor.organizationId, id);
-    await this.audit.log(actor, { action: "delete", entityType: "branch", entityId: id, branchId: id, summary: `Deleted branch "${branch.name}"` });
+    const found: BranchDTO[] = [];
+    for (const id of new Set(ids)) {
+      assertBranchAccess(actor, id);
+      const branch = await this.branches.findById(actor.organizationId, id);
+      if (!branch) throw AppError.notFound("Branch not found");
+      found.push(branch);
+    }
+    const leaving = found.filter((b) => b.isActive).length;
+    if (leaving > 0 && (await this.branches.countActive(actor.organizationId)) - leaving < 1) throw AppError.conflict("A restaurant needs at least one active branch");
+    await inTransaction(async (tx) => {
+      for (const branch of found) {
+        await this.branches.softDelete(actor.organizationId, branch.id, tx);
+        await this.organizations.clearDefaultBranch(actor.organizationId, branch.id, tx);
+        await this.audit.log(actor, { action: "delete", entityType: "branch", entityId: branch.id, branchId: branch.id, summary: `Deleted branch "${branch.name}"` }, tx);
+      }
+    });
+    return { deleted: found.length };
   }
 
   async setPaused(actor: Actor, id: string, paused: boolean, reason: string | null): Promise<BranchDTO> {

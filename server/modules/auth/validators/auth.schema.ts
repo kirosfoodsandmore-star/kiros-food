@@ -33,9 +33,6 @@ export const firebaseSignInSchema = z.object({
   }),
 });
 
-/** Raw Google ID token (Google Identity Services) — same flow as firebaseSignIn. */
-export const googleSignInSchema = firebaseSignInSchema;
-
 export const refreshSchema = z.object({
   body: z.object({ refreshToken: z.string().min(20).max(200) }),
 });

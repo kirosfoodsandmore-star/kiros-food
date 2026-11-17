@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { z } from "zod"
+import { GoogleButton } from "@/components/auth/GoogleButton"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field } from "@/components/ui/label"
@@ -15,6 +16,7 @@ import { AuthEndpoints } from "@/endpoints/auth.endpoints"
 import { email } from "@/lib/validation"
 import { AuthShell } from "@/pages/admin/auth/LoginPage"
 import { ApiError, unwrap } from "@/transport/http"
+import type { LoginResult } from "@/types/admin.types"
 
 const schema = z.object({ email, password: z.string().min(1, "Password is required") })
 type Form = z.infer<typeof schema>
@@ -47,20 +49,31 @@ export function PortalLogin({ title, description, accepts, wrongDoor, landing, r
   // Already signed in with an account that belongs here: straight in.
   if (isAuthenticated && accepts(permissions)) return <Navigate to={landing(permissions)} replace />
 
+  const finish = (result: LoginResult) => {
+    // Right account, wrong door: don't keep the session, say where to go instead.
+    if (!accepts(result.permissions)) {
+      setWrong(true)
+      return
+    }
+    acceptLogin(result)
+    navigate(sentFrom?.startsWith(returnPrefix) ? sentFrom : landing(result.permissions), { replace: true })
+  }
+
   const onSubmit = async (data: Form) => {
     setWrong(false)
     try {
-      const result = unwrap(await AuthEndpoints.login(data))
-      // Right password, wrong door: don't keep the session, say where to go instead.
-      if (!accepts(result.permissions)) {
-        setWrong(true)
-        return
-      }
-      acceptLogin(result)
-      navigate(sentFrom?.startsWith(returnPrefix) ? sentFrom : landing(result.permissions), { replace: true })
+      finish(unwrap(await AuthEndpoints.login(data)))
     } catch (err) {
       toast.error((err as ApiError).message)
     }
+  }
+
+  const google = async (idToken: string) => {
+    setWrong(false)
+    const res = await AuthEndpoints.firebase({ idToken })
+    // This door never creates restaurants: a Google account with no staff record needs an invitation.
+    if (!res.success && res.statusCode === 404) throw new Error("There's no staff account for that Google email. Ask the restaurant owner to invite you.")
+    finish(unwrap(res))
   }
 
   return (
@@ -70,6 +83,7 @@ export function PortalLogin({ title, description, accepts, wrongDoor, landing, r
         <Field label="Password" error={errors.password?.message}><PasswordInput autoComplete="current-password" {...register("password")} data-cy={`${cy}-login-password`} /></Field>
         {wrong ? <p className="rounded-lg bg-warning/10 p-3 text-sm text-warning" role="alert" data-cy={`${cy}-login-wrong`}>{wrongDoor}</p> : null}
         <Button type="submit" className="w-full" loading={isSubmitting} data-cy={`${cy}-login-submit`}>Sign in</Button>
+        <GoogleButton onIdToken={google} cy={`${cy}-login-google`} />
         <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm">
           <Link to="/admin/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
           <span className="flex gap-3">

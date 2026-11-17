@@ -16,7 +16,6 @@ export interface ActorRow {
 export interface CredentialRow {
   id: string;
   organizationId: string;
-  passwordHash: string;
   isActive: boolean;
   firebaseUid: string | null;
 }

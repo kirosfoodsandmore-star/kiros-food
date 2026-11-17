@@ -1,13 +1,9 @@
-// Firebase Authentication as the identity provider. Staff passwords live in Firebase (never bcrypt in
-// Postgres) when Firebase is configured; Google and phone sign-ins arrive as Firebase ID tokens that
-// the Admin SDK verifies. Without Firebase credentials the server falls back to bcrypt so local
-// development still works.
+// Firebase Authentication is the only place passwords live: Postgres stores no password or hash, only the
+// Firebase uid. Google (and phone) sign-ins arrive as Firebase ID tokens that the Admin SDK verifies.
+// Without Firebase credentials nobody can sign in, and the server says so instead of falling back.
 import { env } from "../../config/env";
 import { firebaseConfigured, getFirebaseAuth, getServiceAccountAccessToken } from "../../infrastructure/firebase/firebaseAdmin";
 import { AppError } from "../errors/AppError";
-
-/** Stored in `users.password_hash` when Firebase holds the credential. */
-export const FIREBASE_MANAGED_PASSWORD = "firebase:managed";
 
 export interface VerifiedIdentity {
   uid: string;
@@ -28,9 +24,14 @@ export class FirebaseAuthService {
     return firebaseConfigured();
   }
 
+  /** Sign-in needs Firebase; without it, say so plainly (503) rather than failing in some confusing way. */
+  assertConfigured(): void {
+    if (!this.isConfigured) throw AppError.unavailable("Sign-in is not set up on this server yet: Firebase credentials are missing");
+  }
+
   /** Verifies a Firebase ID token produced by the client SDK (email/password, Google, phone). */
   async verifyIdToken(idToken: string): Promise<VerifiedIdentity> {
-    if (!this.isConfigured) throw AppError.unavailable("Sign-in with Firebase is not configured on the server");
+    this.assertConfigured();
     try {
       const decoded = await getFirebaseAuth().verifyIdToken(idToken, true);
       return {
@@ -49,6 +50,7 @@ export class FirebaseAuthService {
 
   /** Create or update the Firebase user that holds this staff member's password. Returns the uid. */
   async upsertUserPassword(email: string, password: string, displayName?: string): Promise<string> {
+    this.assertConfigured();
     const auth = getFirebaseAuth();
     const normalized = email.trim().toLowerCase();
     try {
@@ -97,8 +99,23 @@ export class FirebaseAuthService {
     throw AppError.unavailable("FIREBASE_API_KEY is not set and could not be discovered");
   }
 
+  /**
+   * Checks an email and password against Firebase and returns the uid when they are right, otherwise null.
+   * Anyone can create a Firebase account for any address from a browser, so an account only counts as that
+   * person's once its email is verified (accounts created here always are).
+   */
+  async checkPassword(email: string, password: string): Promise<string | null> {
+    this.assertConfigured();
+    const result = await this.verifyUserPassword(email, password);
+    if (!result.ok || !result.uid) return null;
+    const user = await getFirebaseAuth()
+      .getUser(result.uid)
+      .catch(() => null);
+    return user && user.emailVerified && !user.disabled ? user.uid : null;
+  }
+
   /** Email + password check against Firebase (`accounts:signInWithPassword`). */
-  async verifyUserPassword(email: string, password: string): Promise<{ ok: boolean; uid: string | null }> {
+  private async verifyUserPassword(email: string, password: string): Promise<{ ok: boolean; uid: string | null }> {
     try {
       const apiKey = await this.webApiKey();
       const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
@@ -114,16 +131,5 @@ export class FirebaseAuthService {
       console.error("[firebase] password verification error", err instanceof Error ? err.message : err);
       return { ok: false, uid: null };
     }
-  }
-
-  /** Verifies a raw Google ID token (for clients using Google Identity Services instead of Firebase). */
-  async verifyGoogleIdToken(idToken: string): Promise<{ email: string; name: string | null; sub: string }> {
-    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`, { signal: AbortSignal.timeout(15_000) }).catch(
-      () => null
-    );
-    if (!res || !res.ok) throw AppError.unauthorised("Invalid Google sign-in token");
-    const payload = (await res.json()) as { email?: string; email_verified?: string; name?: string; sub?: string };
-    if (!payload.email || payload.email_verified !== "true" || !payload.sub) throw AppError.unauthorised("Google account email is not verified");
-    return { email: payload.email.toLowerCase(), name: payload.name ?? null, sub: payload.sub };
   }
 }

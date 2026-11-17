@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { z } from "zod"
+import { GoogleButton } from "@/components/auth/GoogleButton"
 import { BrandLogo } from "@/components/shared/BrandLogo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,6 @@ import { useAuth } from "@/contexts/AuthContext"
 import { AuthEndpoints } from "@/endpoints/auth.endpoints"
 import { useSignupStatus } from "@/hooks/useSignupStatus"
 import { adminHome } from "@/lib/adminHome"
-import { firebaseConfigured, signInWithGoogle } from "@/lib/firebase"
 import { email } from "@/lib/validation"
 import { ApiError, unwrap } from "@/transport/http"
 import type { LoginResult } from "@/types/admin.types"
@@ -28,7 +27,6 @@ export default function LoginPage() {
   const location = useLocation()
   // Back to the page they were sent away from; otherwise to the home that suits their role (a rider's is their deliveries).
   const from = (location.state as { from?: string } | null)?.from
-  const [googleBusy, setGoogleBusy] = useState(false)
   const signup = useSignupStatus()
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({ resolver: zodResolver(schema) })
   const signedIn = (result: LoginResult) => {
@@ -44,23 +42,15 @@ export default function LoginPage() {
     }
   }
 
-  const google = async () => {
-    setGoogleBusy(true)
-    try {
-      const idToken = await signInWithGoogle()
-      const res = await AuthEndpoints.firebase({ idToken })
-      // An unknown Google account is only sent on to "Create your restaurant" while sign-up is open.
-      const d = res.success ? null : (res.data as { needsRegistration?: boolean; email?: string; name?: string } | null)
-      if (!res.success && res.statusCode === 404 && d?.needsRegistration) {
-        navigate("/admin/register", { state: { idToken, email: d.email, name: d.name } })
-        return
-      }
-      signedIn(unwrap(res))
-    } catch (err) {
-      toast.error((err as Error).message)
-    } finally {
-      setGoogleBusy(false)
+  const google = async (idToken: string) => {
+    const res = await AuthEndpoints.firebase({ idToken })
+    // An unknown Google account is only sent on to "Create your restaurant" while sign-up is open.
+    const d = res.success ? null : (res.data as { needsRegistration?: boolean; email?: string; name?: string } | null)
+    if (!res.success && res.statusCode === 404 && d?.needsRegistration) {
+      navigate("/admin/register", { state: { idToken, email: d.email, name: d.name } })
+      return
     }
+    signedIn(unwrap(res))
   }
 
   return (
@@ -69,7 +59,7 @@ export default function LoginPage() {
         <Field label="Email" error={errors.email?.message}><Input type="email" autoComplete="email" autoFocus {...register("email")} data-cy="login-email" /></Field>
         <Field label="Password" error={errors.password?.message}><PasswordInput autoComplete="current-password" {...register("password")} data-cy="login-password" /></Field>
         <Button type="submit" className="w-full" loading={isSubmitting} data-cy="login-submit">Sign in</Button>
-        {firebaseConfigured ? <Button type="button" variant="outline" className="w-full" onClick={google} loading={googleBusy} data-cy="login-google">Continue with Google</Button> : null}
+        <GoogleButton onIdToken={google} cy="login-google" />
         <div className="flex justify-between text-sm">
           <Link to="/admin/forgot-password" className="text-primary hover:underline" data-cy="login-forgot">Forgot password?</Link>
           {signup.open ? <Link to="/admin/register" className="text-primary hover:underline" data-cy="login-register">Create a restaurant</Link> : null}

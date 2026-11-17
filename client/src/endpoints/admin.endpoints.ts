@@ -76,6 +76,7 @@ export const BranchEndpoints = {
   create: (body: Body) => wrapCall<Branch>("POST", `${A}/branches`, body),
   update: (id: string, body: Body) => wrapCall<Branch>("PUT", `${A}/branches/${id}`, body),
   remove: (id: string) => wrapCall<null>("DELETE", `${A}/branches/${id}`),
+  removeMany: (ids: string[]) => wrapCall<{ deleted: number }>("POST", `${A}/branches/bulk-delete`, { ids }),
   pause: (id: string, paused: boolean, reason?: string | null) => wrapCall<Branch>("POST", `${A}/branches/${id}/pause`, { paused, reason }),
   setHours: (id: string, hours: OpeningHourRow[]) => wrapCall<OpeningHourRow[]>("PUT", `${A}/branches/${id}/hours`, { hours }),
   addClosure: (id: string, body: { date: string; reason?: string | null }) => wrapCall<HolidayClosure>("POST", `${A}/branches/${id}/closures`, body),

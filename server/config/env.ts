@@ -152,7 +152,6 @@ export const env = {
   },
   /** AES-256-GCM key for secrets at rest (Paystack secret keys). Empty = saving payment keys refused. */
   encryptionKey: read("APP_ENCRYPTION_KEY"),
-  bcryptRounds: readInt("BCRYPT_ROUNDS", 10),
   otpTtlMinutes: readInt("OTP_TTL_MINUTES", 15),
   inviteTtlHours: readInt("INVITE_TTL_HOURS", 48),
   cloudinary: {

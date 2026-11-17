@@ -21,6 +21,7 @@ export function useBranchMutations() {
     create: m((b: Body) => BranchEndpoints.create(b).then(unwrap)),
     update: m((v: { id: string; body: Body }) => BranchEndpoints.update(v.id, v.body).then(unwrap)),
     remove: m((id: string) => BranchEndpoints.remove(id).then(unwrap)),
+    removeMany: m((ids: string[]) => BranchEndpoints.removeMany(ids).then(unwrap)),
     pause: m((v: { id: string; paused: boolean; reason?: string | null }) => BranchEndpoints.pause(v.id, v.paused, v.reason).then(unwrap)),
     setHours: m((v: { id: string; hours: OpeningHourRow[] }) => BranchEndpoints.setHours(v.id, v.hours).then(unwrap)),
     addClosure: m((v: { id: string; date: string; reason?: string | null }) => BranchEndpoints.addClosure(v.id, { date: v.date, reason: v.reason }).then(unwrap)),

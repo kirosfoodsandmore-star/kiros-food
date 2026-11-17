@@ -4,8 +4,7 @@
 import { env } from "../../../config/env";
 import { inTransaction } from "../../../infrastructure/database/transaction";
 import { AppError } from "../../../shared/errors/AppError";
-import { FIREBASE_MANAGED_PASSWORD, FirebaseAuthService } from "../../../shared/firebase/firebaseAuth.service";
-import { hashPassword } from "../../../shared/utils/password";
+import { FirebaseAuthService } from "../../../shared/firebase/firebaseAuth.service";
 import { orderPrefix } from "../../../shared/utils/referenceCode";
 import { OWNER_ROLE_KEY } from "../../access/catalog/roles.catalog";
 import { RoleService } from "../../access/services/role.service";
@@ -73,17 +72,10 @@ export class OnboardingService {
     if (await this.users.existsByEmail(email)) throw AppError.conflict("A staff account with this email already exists");
     if (input.slug && (await this.organizations.slugTaken(input.slug))) throw AppError.conflict("That storefront address is already taken");
 
-    let passwordHash = FIREBASE_MANAGED_PASSWORD;
+    // The password goes to Firebase and nowhere else; we keep only the Firebase uid it gives back.
     let firebaseUid = input.firebaseUid ?? null;
-    if (input.ownerPassword) {
-      if (FirebaseAuthService.Instance.isConfigured) {
-        firebaseUid = await FirebaseAuthService.Instance.upsertUserPassword(email, input.ownerPassword, input.ownerName);
-      } else {
-        passwordHash = await hashPassword(input.ownerPassword);
-      }
-    } else if (!firebaseUid && !FirebaseAuthService.Instance.isConfigured) {
-      throw AppError.badRequest("A password is required");
-    }
+    if (input.ownerPassword) firebaseUid = await FirebaseAuthService.Instance.upsertUserPassword(email, input.ownerPassword, input.ownerName);
+    else if (!firebaseUid) throw AppError.badRequest("A password is required");
 
     const slug = input.slug ?? (await this.uniqueSlug(input.restaurantName));
     return inTransaction(async (tx) => {
@@ -106,7 +98,6 @@ export class OnboardingService {
           roleId: roleIds[OWNER_ROLE_KEY],
           name: input.ownerName.trim(),
           email,
-          passwordHash,
           firebaseUid,
           phone: input.phone ?? null,
           branchIds: [],

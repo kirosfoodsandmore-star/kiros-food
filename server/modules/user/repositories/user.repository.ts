@@ -41,12 +41,7 @@ export class UserRepository {
   async findCredentialsByEmail(email: string): Promise<CredentialRow | null> {
     return db()
       .getRepository(UserEntity)
-      .findOne({ where: { email: email.toLowerCase() }, select: ["id", "organizationId", "passwordHash", "isActive", "firebaseUid"] });
-  }
-
-  async findPasswordHash(userId: string): Promise<string | null> {
-    const row = await db().getRepository(UserEntity).findOne({ where: { id: userId }, select: ["passwordHash"] });
-    return row?.passwordHash ?? null;
+      .findOne({ where: { email: email.toLowerCase() }, select: ["id", "organizationId", "isActive", "firebaseUid"] });
   }
 
   async findById(organizationId: string, id: string, tx?: Tx): Promise<StaffDTO | null> {

@@ -4,6 +4,7 @@ import { BranchService } from "../services/branch.service";
 import {
   addClosureSchema,
   branchIdSchema,
+  bulkDeleteBranchesSchema,
   closureIdSchema,
   createBranchSchema,
   createZoneSchema,
@@ -31,6 +32,7 @@ export class BranchController {
     return svc().update(actorOf(req), params.id, body);
   });
   static remove = handle("Branch deleted", (req) => svc().remove(actorOf(req), input(req, branchIdSchema).params.id));
+  static removeMany = handle("Branches deleted", (req) => svc().removeMany(actorOf(req), input(req, bulkDeleteBranchesSchema).body.ids));
   static pause = handle("Branch updated", (req) => {
     const { params, body } = input(req, pauseBranchSchema);
     return svc().setPaused(actorOf(req), params.id, body.paused, body.reason ?? null);

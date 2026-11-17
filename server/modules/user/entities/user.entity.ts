@@ -20,8 +20,7 @@ export interface User {
   name: string;
   /** Always stored lower-case — lookups compare against the lower-cased input. */
   email: string;
-  /** bcrypt hash, or the "firebase:managed" sentinel when Firebase Authentication holds the password. */
-  passwordHash: string;
+  /** The person's Firebase Authentication account. Passwords live there; none is stored here. */
   firebaseUid: string | null;
   phone: string | null;
   /** Branches this person works in; ignored when allBranches is true. */
@@ -48,7 +47,6 @@ export const UserEntity = new EntitySchema<User>({
     roleId: uuidColumn("role_id"),
     name: varchar("name", 120),
     email: varchar("email", 160),
-    passwordHash: varchar("password_hash", 100),
     firebaseUid: varchar("firebase_uid", 128, true),
     phone: varchar("phone", 30, true),
     branchIds: uuidArrayColumn("branch_ids"),
