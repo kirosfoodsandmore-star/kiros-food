@@ -1,5 +1,6 @@
-// Theme: the visitor's *preference* is "light", "dark" or "system" (follow the device, live). `theme` is what
-// is actually applied, so existing consumers (map style, toasts) keep reading a plain light/dark value.
+// Theme: the visitor's *preference* is "light", "dark" or "system" (follow the device, live). New visitors get
+// light whatever their device is set to; anyone who picks Dark or System keeps that. `theme` is what is actually
+// applied, so existing consumers (map style, toasts) keep reading a plain light/dark value.
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { usePersistedState } from "@/hooks/usePersistedState"
 
@@ -25,9 +26,10 @@ function systemTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Earlier versions stored "light" or "dark" under this key; those remain valid. New visitors follow the device.
-  const [stored, setPreference] = usePersistedState<ThemePreference>("kiros.theme", "system")
-  const preference: ThemePreference = stored === "light" || stored === "dark" ? stored : "system"
+  // Nothing stored yet (a first visit), or something unreadable, means light. A stored "dark" or "system" is the
+  // visitor's own choice and is kept.
+  const [stored, setPreference] = usePersistedState<ThemePreference>("kiros.theme", "light")
+  const preference: ThemePreference = stored === "dark" || stored === "system" ? stored : "light"
   const [system, setSystem] = useState<Theme>(systemTheme)
 
   useEffect(() => {
@@ -53,6 +55,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme(): ThemeValue {
   const ctx = useContext(ThemeContext)
-  if (!ctx) return { theme: "light", preference: "system", setPreference: () => undefined, toggle: () => undefined, setTheme: () => undefined }
+  if (!ctx) return { theme: "light", preference: "light", setPreference: () => undefined, toggle: () => undefined, setTheme: () => undefined }
   return ctx
 }
