@@ -10,7 +10,7 @@ import { SocialLinks } from "@/components/store/SocialLinks"
 import { Button } from "@/components/ui/button"
 import { useStore } from "@/contexts/StoreContext"
 import { useStoreBranches } from "@/hooks/useStore"
-import { type FooterLink, storeNavLinks, storefrontExtras } from "@/lib/storefrontExtras"
+import { type FooterLink, storeLegalLinks, storeNavLinks, storefrontExtras } from "@/lib/storefrontExtras"
 import { cn, formatPhone } from "@/lib/utils"
 import { useStoreSession } from "@/stores/storeSession"
 
@@ -30,6 +30,7 @@ export function StoreFooter() {
   const { branchId, open } = useStoreSession()
   const { data: branches } = useStoreBranches(slug)
   const extras = storefrontExtras(slug)
+  const legalLinks = storeLegalLinks(slug)
   // The item page has a fixed add-to-bag bar on phones; keep the footer's last row clear of it.
   const onItemPage = Boolean(useMatch("/:slug/item/:itemId"))
   // Someone following an order is not browsing: skip the promo band so the page ends sooner.
@@ -79,9 +80,9 @@ export function StoreFooter() {
         <div className={cn("mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 pb-12 text-sm sm:grid-cols-2", onContactPage ? "gap-8 pb-8 lg:grid-cols-[1.25fr_0.8fr_1.2fr]" : "lg:grid-cols-[1.25fr_0.8fr_1.2fr_1fr]")}>
           {/* Brand + contact */}
           <div className="space-y-5">
-            <Link to={`/${slug}`} className="inline-flex items-center gap-3">
-              <BrandMark className="size-11 text-lg" />
-              <span className="font-display text-xl font-semibold">{profile.name}</span>
+            <Link to={`/${slug}`} className="inline-flex items-center gap-3" aria-label={profile.name}>
+              <BrandMark className={extras.brand ? "size-16" : "size-11 text-lg"} />
+              {extras.brand ? null : <span className="font-display text-xl font-semibold">{profile.name}</span>}
             </Link>
             {!onContactPage && (profile.phone || whatsapp) ? (
               <div className="flex items-start gap-3">
@@ -155,9 +156,9 @@ export function StoreFooter() {
             (safe-bottom only adds space on phones with a home-indicator inset, and is 0 everywhere else.) */}
         <div className="safe-bottom border-t border-white/10">
           <div className="mx-auto flex max-w-6xl flex-col text-xs text-ink-foreground/60 sm:h-14 sm:flex-row sm:items-stretch sm:justify-between">
-            {extras.legalLinks?.length ? (
+            {legalLinks.length ? (
               <ul className="order-first flex flex-wrap items-center gap-x-5 gap-y-1 px-4 pb-3 pt-4 sm:order-none sm:flex-1 sm:justify-center sm:p-0" aria-label="Policies">
-                {extras.legalLinks.map((l) => <li key={l.label}><FooterAnchor link={l} className={linkCls} /></li>)}
+                {legalLinks.map((l) => <li key={l.label}><FooterAnchor link={l} className={linkCls} /></li>)}
               </ul>
             ) : null}
             <div className="flex h-12 items-stretch justify-between border-t border-white/10 sm:contents">

@@ -3,10 +3,8 @@
 // from Settings (the API); only these extras live here, keyed by the restaurant's slug. To add another
 // restaurant, add an entry; when Settings gains these fields, delete this file and read them from the API.
 
-// Web-sized copies of the Kiros Farmshop logo (made from client/logo.png): the full lockup, and the round badge on a
-// white disc, which also reads on dark surfaces.
-import brandLockup from "@/assets/brand/kiros-farmshop-logo.png"
-import brandMark from "@/assets/brand/kiros-farmshop-mark.png"
+// The Kiros Foods badge (from the final logo PDF): a round badge, transparent outside its scalloped edge.
+import brandMark from "@/assets/brand/kiros-mark.png"
 
 export interface FooterLink {
   label: string
@@ -35,8 +33,10 @@ export interface HomeContent {
 }
 
 export interface StorefrontExtras {
-  /** Logo artwork: `lockup` is the badge plus wordmark (light backgrounds), `mark` is the badge alone (any background). */
-  brand?: { lockup: string; mark: string }
+  /** The name the storefront shows (footer, page titles, copyright), whatever the restaurant is called in Admin → Settings. Emails and the admin portal still use the Settings name. */
+  displayName?: string
+  /** Logo artwork: the round badge (transparent outside the scalloped edge, so it sits on light and dark surfaces). It stands alone, without the name beside it. */
+  brand?: { mark: string }
   /** Content for the About page. Without it, the page and its links are not shown. */
   about?: AboutContent
   home?: HomeContent
@@ -48,14 +48,17 @@ export interface StorefrontExtras {
   socialLinks?: Record<string, string>
   /** Company pages that live on the main website (shown in the footer's link list). */
   companyLinks?: FooterLink[]
-  /** Policies, shown in the footer's bottom bar. */
+  /** Policy links for restaurants whose policies live elsewhere (a full URL each). Ignored when `legal` is set. */
   legalLinks?: FooterLink[]
+  /** The restaurant has its own Privacy Policy, Delivery Policy and Terms pages inside the app (pages/store/legalContent). */
+  legal?: boolean
 }
 
 // From "KIROS FAQ Content.docx" (copied from kiros.ng). Sunday is written "12:30am" on the website, which the
 // document flags as a probable typo; it is shown as 12:30pm here.
-const KIROS_FARMSHOP: StorefrontExtras = {
-  brand: { lockup: brandLockup, mark: brandMark },
+const KIROS_FOODS: StorefrontExtras = {
+  displayName: "Kiros Foods",
+  brand: { mark: brandMark },
   // From "KIROS FarmShop — Menu Ordering User Stories.md": the shop menu is salads (build your own or a signature
   // salad), shawarma, wraps and sandwiches, smoothies, parfait and juices.
   home: {
@@ -70,11 +73,11 @@ const KIROS_FARMSHOP: StorefrontExtras = {
   // The footer's YouTube icon on kiros.ng points at a placeholder; this is the channel the Contact Us page uses.
   socialLinks: { youtube: "https://youtube.com/kirosfarmshop" },
   about: {
-    heading: "Welcome to Kiros Farmshop!",
+    heading: "Welcome to Kiros Foods!",
     paragraphs: [
-      "Kiros Farmshop, located in Nigeria, is a retail outlet that usually sells produce directly from our farms. We resell related goods such as locally produced groceries, foods, drinks and delicatessen products.",
+      "Kiros Foods, located in Nigeria, is a retail outlet that usually sells produce directly from our farms. We resell related goods such as locally produced groceries, foods, drinks and delicatessen products.",
       "We offer direct sales to our consumers, and we allow other merchants to retain a larger portion of the resulting products than they can obtain by selling to a wholesaler or larger reseller.",
-      "Our farmshops sell higher-margin premium goods such as organic produce of known local provenance, in order to differentiate our offerings from those in supermarkets.",
+      "Our shops sell higher-margin premium goods such as organic produce of known local provenance, in order to differentiate our offerings from those in supermarkets.",
       "Our kitchen turns that produce into food to order: build-your-own and signature salads, smoothies, parfait, natural juice blends, shawarma, wraps and sandwiches.",
     ],
     quote: "Fresh and organic farm produce you can trust.",
@@ -91,19 +94,26 @@ const KIROS_FARMSHOP: StorefrontExtras = {
   companyLinks: [
     { label: "Delivery", href: "https://kiros.ng/delivery", external: true },
   ],
-  legalLinks: [
-    { label: "Privacy Policy", href: "https://kiros.ng/privacy-policy", external: true },
-    { label: "Delivery Policy", href: "https://kiros.ng/delivery-policy", external: true },
-    { label: "Terms & Conditions", href: "https://kiros.ng/tc", external: true },
-  ],
+  legal: true,
 }
 
 const BY_SLUG: Record<string, StorefrontExtras> = {
-  kiros: KIROS_FARMSHOP,
+  kiros: KIROS_FOODS,
 }
 
 export function storefrontExtras(slug: string): StorefrontExtras {
   return BY_SLUG[slug] ?? {}
+}
+
+/** The policy links in the footer's bottom bar: the in-app pages when the restaurant has them, otherwise its own links. */
+export function storeLegalLinks(slug: string): FooterLink[] {
+  const extras = storefrontExtras(slug)
+  if (!extras.legal) return extras.legalLinks ?? []
+  return [
+    { label: "Privacy Policy", href: `/${slug}/privacy-policy` },
+    { label: "Delivery Policy", href: `/${slug}/delivery-policy` },
+    { label: "Terms & Conditions", href: `/${slug}/terms` },
+  ]
 }
 
 /** The main site links, in the same order everywhere (header, side menu, footer). */

@@ -1,6 +1,6 @@
 // The logo as the staff-facing screens (sign-in pages, admin sidebar) show it. Brand artwork set up for a restaurant in
-// lib/storefrontExtras wins; otherwise the logo uploaded in Admin → Settings; otherwise the platform's own "K" tile.
-// The full lockup is dark lettering, so on dark surfaces it sits on a white plate to stay readable.
+// lib/storefrontExtras wins (the round badge on its own: it already reads as the name); otherwise the logo uploaded
+// in Admin → Settings with the name beside it; otherwise the platform's own "K" tile.
 import { storefrontExtras } from "@/lib/storefrontExtras"
 import { cn } from "@/lib/utils"
 
@@ -9,8 +9,9 @@ export interface BrandLogoProps {
   slug?: string
   /** The logo uploaded in Admin → Settings, when there is one. */
   logoUrl?: string | null
-  /** Restaurant name, used when the logo is an uploaded image (it carries no lettering of its own). */
+  /** Restaurant name: the badge's alt text, or the text beside an uploaded logo. */
   name?: string
+  /** Sizing for the badge or uploaded logo, e.g. "size-20". */
   className?: string
 }
 
@@ -18,8 +19,8 @@ export function BrandLogo({ slug, logoUrl, name, className }: BrandLogoProps) {
   const brand = slug ? storefrontExtras(slug).brand : undefined
   if (brand) {
     return (
-      <span className="inline-flex items-center dark:rounded-lg dark:bg-white dark:px-2 dark:py-1" data-cy="brand-logo">
-        <img src={brand.lockup} alt={name ?? "Kiros Farmshop"} className={cn("h-8 w-auto", className)} />
+      <span className="inline-flex items-center" data-cy="brand-logo">
+        <img src={brand.mark} alt={name ?? "Kiros"} className={cn("shrink-0 object-contain", className ?? "size-10")} />
       </span>
     )
   }

@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   const ownerEmail = process.env.SEED_OWNER_EMAIL ?? "owner@kiros.test";
   const ownerPassword = process.env.SEED_OWNER_PASSWORD ?? "Password123";
   const created = await OnboardingService.Instance.createRestaurant({
-    restaurantName: "KIROS FarmShop",
+    restaurantName: "KIROS Foods",
     slug: SLUG,
     ownerName: "KIROS Owner",
     ownerEmail,
@@ -89,11 +89,11 @@ async function main(): Promise<void> {
   }
 
   // Payments & promo ────────────────────────────────────────────────────────
-  await PaymentSettingsRepository.Instance.createBankAccount({ organizationId: org, branchId: null, bankName: "Demo Bank", accountName: "KIROS FarmShop (demo)", accountNumber: "0123456789", isActive: true, sortOrder: 0 });
+  await PaymentSettingsRepository.Instance.createBankAccount({ organizationId: org, branchId: null, bankName: "Demo Bank", accountName: "KIROS Foods (demo)", accountNumber: "0123456789", isActive: true, sortOrder: 0 });
   await PaymentSettingsRepository.Instance.update(org, { transferEnabled: true, transferInstructions: "Use your order number as the transfer narration." });
   await PromoRepository.Instance.create({ organizationId: org, code: "WELCOME10", type: "percent", value: 10, startsAt: null, endsAt: null, maxUses: null, maxUsesPerCustomer: 1, minSpend: K(3000), branchId: null, menuId: null, isActive: true });
 
-  console.log(`Seeded "KIROS FarmShop" (slug ${SLUG}) with ${itemCount} menu items at ${BRANCHES.length} branches.`);
+  console.log(`Seeded "KIROS Foods" (slug ${SLUG}) with ${itemCount} menu items at ${BRANCHES.length} branches.`);
   console.log(`Hidden until confirmed with the shop: ${hiddenItems.join("; ")}.`);
   console.log("All prices are placeholders — set the real ones in Admin → Menus and Admin → Option groups.");
   console.log(`Owner login: ${ownerEmail} / ${ownerPassword}`);

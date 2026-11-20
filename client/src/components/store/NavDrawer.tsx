@@ -40,8 +40,8 @@ export function NavDrawer() {
       <SheetContent side="left" aria-describedby={undefined} data-cy="nav-drawer">
         <SheetHeader>
           <div className="flex items-center gap-3">
-            <BrandMark className="size-10 text-lg" />
-            <SheetTitle>{profile.name}</SheetTitle>
+            <BrandMark className={storefrontExtras(slug).brand ? "size-14" : "size-10 text-lg"} />
+            <SheetTitle className={storefrontExtras(slug).brand ? "sr-only" : undefined}>{profile.name}</SheetTitle>
           </div>
           {profile.tagline ? <p className="text-sm text-muted-foreground">{profile.tagline}</p> : null}
         </SheetHeader>

@@ -1,6 +1,6 @@
 // The restaurant's round badge. Brand artwork set up in lib/storefrontExtras wins; otherwise the logo uploaded in
-// Admin → Settings; otherwise the first letter on a tile. The badge artwork carries its own white disc, so it reads
-// the same on light and dark surfaces.
+// Admin → Settings; otherwise the first letter on a tile. The badge artwork is transparent outside its scalloped edge
+// and white inside, so it reads the same on light and dark surfaces.
 import { useStore } from "@/contexts/StoreContext"
 import { storefrontExtras } from "@/lib/storefrontExtras"
 import { cn } from "@/lib/utils"

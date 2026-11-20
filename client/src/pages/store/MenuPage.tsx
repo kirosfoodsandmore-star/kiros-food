@@ -1,4 +1,4 @@
-import { Bike, ChevronDown, LayoutGrid, List, Share2, Store as StoreIcon, Trash2 } from "lucide-react"
+import { ChevronDown, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { toast } from "sonner"
@@ -17,7 +17,7 @@ import { useStoreSession } from "@/stores/storeSession"
 export default function MenuPage() {
   const { slug, fmt } = useStore()
   const location = useLocation()
-  const { branchId, menuId, setMenu, fulfilment, viewMode, setViewMode, open } = useStoreSession()
+  const { branchId, menuId, setMenu, open } = useStoreSession()
   const { data: branches } = useStoreBranches(slug)
   const branch = branches?.find((b) => b.id === branchId)
   const { data: menus } = useBranchMenus(slug, branchId)
@@ -26,7 +26,7 @@ export default function MenuPage() {
     if (activeMenuId && activeMenuId !== menuId) setMenu(activeMenuId)
   }, [activeMenuId, menuId, setMenu])
   const { data: menu, isLoading, error, refetch } = useStoreMenu(slug, activeMenuId, branchId)
-  const { cart, clear, setFulfilment } = useCart()
+  const { cart, clear } = useCart()
   // Categories whose items are all hidden in admin (e.g. one waiting on a recipe) stay off the storefront.
   const categories = (menu?.categories ?? []).filter((c) => c.items.length > 0)
   const [clearOpen, setClearOpen] = useState(false)
@@ -35,14 +35,6 @@ export default function MenuPage() {
     if (menu && location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [menu, location.hash])
 
-  const share = async () => {
-    const url = window.location.href
-    if (navigator.share) await navigator.share({ title: menu?.name, url }).catch(() => undefined)
-    else {
-      await navigator.clipboard.writeText(url)
-      toast.success("Link copied")
-    }
-  }
 
   if (!branchId) {
     return (
@@ -74,32 +66,13 @@ export default function MenuPage() {
             {menu?.name ?? "Menu"} <ChevronDown className="size-4" />
           </button>
         ) : null}
-        <div className="flex rounded-lg border p-0.5" role="group" aria-label="Delivery or pickup">
-          {(["delivery", "pickup"] as const).map((f) => (
-            <button key={f} type="button" onClick={() => setFulfilment.mutate(f)} className={cn("flex items-center gap-1 rounded-md px-3 py-1 text-sm", (cart?.fulfilment ?? fulfilment) === f ? "bg-primary text-primary-foreground" : "hover:bg-muted")} aria-label={f === "delivery" ? "Delivery" : "Pickup"} aria-pressed={(cart?.fulfilment ?? fulfilment) === f} data-cy={`toggle-${f}`}>
-              {f === "delivery" ? <Bike className="size-4" /> : <StoreIcon className="size-4" />}
-              <span className="hidden sm:inline">{f === "delivery" ? "Delivery" : "Pickup"}</span>
-            </button>
-          ))}
-        </div>
         {/* Secondary actions travel together and stay right-aligned when the row wraps. */}
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" onClick={share} aria-label="Share menu" data-cy="menu-share">
-            <Share2 />
-          </Button>
           {cart && cart.lines.length > 0 ? (
             <Button variant="ghost" size="icon-sm" onClick={() => setClearOpen(true)} aria-label="Clear bag" data-cy="menu-clear-cart">
               <Trash2 />
             </Button>
           ) : null}
-          <div className="flex rounded-lg border p-0.5" role="group" aria-label="View">
-            <button type="button" onClick={() => setViewMode("grid")} className={cn("rounded-md p-1.5", viewMode === "grid" && "bg-muted")} aria-label="Grid view" aria-pressed={viewMode === "grid"} data-cy="view-grid">
-              <LayoutGrid className="size-4" />
-            </button>
-            <button type="button" onClick={() => setViewMode("list")} className={cn("rounded-md p-1.5", viewMode === "list" && "bg-muted")} aria-label="List view" aria-pressed={viewMode === "list"} data-cy="view-list">
-              <List className="size-4" />
-            </button>
-          </div>
         </div>
       </section>
 
@@ -120,9 +93,9 @@ export default function MenuPage() {
               <section key={c.id} id={`cat-${c.id}`} className="scroll-mt-28" data-cy={`category-section-${c.id}`}>
                 <h2 className="text-xl font-semibold">{c.name}</h2>
                 {c.description ? <p className="text-sm text-muted-foreground">{c.description}</p> : null}
-                <div className={cn("mt-3 grid gap-3", viewMode === "grid" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" : "grid-cols-1 sm:grid-cols-2")}>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {c.items.map((item) => (
-                    <ItemCard key={item.id} item={item} slug={slug} fmt={fmt} view={viewMode} />
+                    <ItemCard key={item.id} item={item} slug={slug} fmt={fmt} />
                   ))}
                 </div>
               </section>

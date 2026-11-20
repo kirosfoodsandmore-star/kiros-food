@@ -42,7 +42,7 @@ export function emailLayout(body: string, brand: LayoutBrand): string {
   const masthead = !brand.logoUrl
     ? `${name}${powered}`
     : brand.logoKind === "badge"
-      ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-right:12px;vertical-align:middle"><img src="${esc(brand.logoUrl)}" alt="" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:22px"></td><td style="vertical-align:middle">${name}${powered}</td></tr></table>`
+      ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-right:12px;vertical-align:middle"><img src="${esc(brand.logoUrl)}" alt="" width="44" height="44" style="display:block;width:44px;height:44px"></td><td style="vertical-align:middle">${name}${powered}</td></tr></table>`
       : `<img src="${esc(brand.logoUrl)}" alt="${esc(brand.businessName)}" height="36" style="display:block;height:36px;max-width:160px;object-fit:contain;margin-bottom:6px">${name}${powered}`;
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>

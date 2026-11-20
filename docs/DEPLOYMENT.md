@@ -55,7 +55,7 @@ Emails sent: restaurant welcome, staff invite (48-hour link), password reset cod
 | Variable | Value |
 |---|---|
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | from the Aiven service in §1 (same names as `server/.env`). Alternatively set the single `DATABASE_URL` (the service URI); it takes priority |
-| `APP_URL` | the Render URL, e.g. `https://kiros-api.onrender.com`. It must be public: emails load the Kiros Farmshop logo from `APP_URL/brand/`, and mail apps cannot fetch images from localhost |
+| `APP_URL` | the Render URL, e.g. `https://kiros-api.onrender.com`. It must be public: emails load the Kiros Foods logo from `APP_URL/brand/`, and mail apps cannot fetch images from localhost |
 | `STOREFRONT_URL` | the web app's address, e.g. `https://kiros.vercel.app`. It is the only URL to set: the admin portal is the same site under `/admin`, so staff-invite and new-order emails link to `STOREFRONT_URL/admin/…`. Also used for the Paystack return URL |
 | `CORS_ORIGINS` | the same address (comma-separated if the web app is also served from another domain). In production the API accepts browser requests only from `CORS_ORIGINS` and `STOREFRONT_URL` |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_API_KEY` | from §2 |

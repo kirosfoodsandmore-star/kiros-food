@@ -4,12 +4,12 @@
 import { env } from "../../config/env";
 
 interface BuiltInBrand {
-  /** Round badge on its own white disc, so it reads on the dark email header. */
+  /** The round badge (white inside, transparent outside its scalloped edge), so it reads on the dark email header. */
   badge: string;
 }
 
 const BUILT_IN: Record<string, BuiltInBrand> = {
-  kiros: { badge: "kiros-farmshop-mark.png" },
+  kiros: { badge: "kiros-mark.png" },
 };
 
 export function builtInBadgeUrl(slug: string): string | null {

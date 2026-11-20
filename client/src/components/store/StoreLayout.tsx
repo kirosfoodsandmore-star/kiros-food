@@ -1,6 +1,6 @@
 // Storefront shell: resolves the restaurant by slug, provides store + customer contexts, renders the
 // header, overlays and footer. The branch picker opens once on arrival when no branch is stored.
-import { Suspense, useEffect } from "react"
+import { Suspense, useEffect, useMemo } from "react"
 import { Outlet, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { PageLoader } from "@/components/shared/PageLoader"
@@ -9,6 +9,7 @@ import { CustomerProvider } from "@/contexts/CustomerContext"
 import { StoreProvider, useStore, useStoreProfile } from "@/contexts/StoreContext"
 import { useStoreBranches } from "@/hooks/useStore"
 import { pickDefaultBranch } from "@/lib/defaultBranch"
+import { storefrontExtras } from "@/lib/storefrontExtras"
 import { useStoreSession } from "@/stores/storeSession"
 import { ActiveOrderBar } from "./ActiveOrderBar"
 import { BranchPicker } from "./BranchPicker"
@@ -21,7 +22,11 @@ import { SearchDialog } from "./SearchDialog"
 
 export default function StoreLayout() {
   const { slug = "" } = useParams()
-  const { data: profile, isLoading, error, refetch } = useStoreProfile(slug)
+  const { data: apiProfile, isLoading, error, refetch } = useStoreProfile(slug)
+  // The storefront's display name (lib/storefrontExtras) wins over the name saved in Settings, so the footer, copyright
+  // and page titles all read the same.
+  const displayName = storefrontExtras(slug).displayName
+  const profile = useMemo(() => (apiProfile && displayName ? { ...apiProfile, name: displayName } : apiProfile), [apiProfile, displayName])
 
   if (isLoading) return <PageLoader label="Opening the shop…" />
   if (error || !profile) {

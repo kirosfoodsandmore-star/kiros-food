@@ -32,8 +32,9 @@ export function StoreHeader() {
   const { cart, itemCount } = useCart()
   const scrolled = useScrolled()
   const branch = branches?.find((b) => b.id === branchId)
+  // The badge already carries the name, so it stands alone; restaurants without badge artwork keep their name as text.
+  const hasBadge = Boolean(storefrontExtras(slug).brand)
   const links = [...storeNavLinks(slug).filter((l) => BAR_LINKS.includes(l.label)), ...(isSignedIn ? [{ label: "My orders", href: `/${slug}/orders` }] : [])]
-  const brand = storefrontExtras(slug).brand
 
   // "/" or Ctrl/Cmd+K opens search from anywhere (unless you're typing in a field).
   useEffect(() => {
@@ -60,19 +61,8 @@ export function StoreHeader() {
           <MenuIcon />
         </Button>
         <Link to={`/${slug}`} className="flex shrink-0 items-center gap-2 rounded-lg font-display text-lg font-semibold lg:mr-3" aria-label={profile.name} data-cy="brand-link">
-          {brand ? (
-            <>
-              <BrandMark className="size-9 sm:hidden" />
-              <span className="hidden items-center sm:flex dark:rounded-lg dark:bg-white dark:px-2 dark:py-1">
-                <img src={brand.lockup} alt={profile.name} className="h-8 w-auto" />
-              </span>
-            </>
-          ) : (
-            <>
-              <BrandMark className="size-8" />
-              <span className="hidden sm:inline">{profile.name}</span>
-            </>
-          )}
+          <BrandMark className={hasBadge ? "size-11" : "size-10"} />
+          {hasBadge ? null : <span className="hidden sm:inline">{profile.name}</span>}
         </Link>
 
         <nav aria-label="Main" className="hidden items-center lg:flex" data-cy="store-nav">

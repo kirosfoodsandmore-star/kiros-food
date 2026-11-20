@@ -157,7 +157,9 @@ const CATEGORIES: CategorySpec[] = [
   },
 ];
 
-export const FARMSHOP_MENU_NAME = "FarmShop Menu";
+/** What customers see. Databases seeded earlier call it "FarmShop Menu"; the seed script still recognises that name. */
+export const FARMSHOP_MENU_NAME = "Kiros Menu";
+export const LEGACY_FARMSHOP_MENU_NAME = "FarmShop Menu";
 
 /** Creates the FarmShop menu (categories, option groups, items) for an organization and returns the menu id. */
 export async function installFarmshopMenu(organizationId: string, sortOrder = 0): Promise<{ menuId: string; itemCount: number; hiddenItems: string[] }> {

@@ -1,5 +1,5 @@
-// Storefront hero: full-bleed ink stage with drifting aurora light, a word-by-word headline, live
-// opening status, counting stats and an interactive 3D stack of the restaurant's real dishes.
+// Storefront hero: a full-bleed stage with drifting soft colour (bright cream and mint by day, deep ink by night),
+// a word-by-word headline, live opening status, counting stats and an interactive 3D stack of the restaurant's real dishes.
 import { ArrowRight, Bike, ChefHat, MapPin, MessageCircle, Plus, Store as StoreIcon } from "lucide-react"
 import { Fragment, useRef, useState, type CSSProperties } from "react"
 import { Link } from "react-router-dom"
@@ -43,6 +43,7 @@ export function Hero({ slug, name, tagline, logoUrl, fmt, branches, branch, dish
   const headline = tagline || "Fresh from the farm, straight to you."
   const words = splitHeadline(headline)
   const copy = storefrontExtras(slug).home
+  const hasBadge = Boolean(storefrontExtras(slug).brand)
   const openCount = branches.filter((b) => b.isOpen).length
   const cities = new Set(branches.map((b) => b.city)).size
   // Above the fold: count up as soon as the data is in.
@@ -59,25 +60,26 @@ export function Hero({ slug, name, tagline, logoUrl, fmt, branches, branch, dish
       : null
 
   return (
-    <section className="grain relative isolate -mt-6 ml-[calc(50%-50vw)] w-screen overflow-hidden bg-ink text-ink-foreground" data-cy="home-hero">
-      {/* Backdrop: aurora light, fine grid, vignette. */}
+    <section className="grain hero-bright relative isolate -mt-6 ml-[calc(50%-50vw)] w-screen overflow-hidden bg-gradient-to-br from-[#fffaf0] via-[#f6fbf1] to-[#e6f5ea] text-foreground dark:bg-none dark:bg-ink dark:text-ink-foreground" data-cy="home-hero">
+      {/* Backdrop: soft drifting colour, fine grid, and a fade into the page below. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="animate-aurora absolute -left-[10%] -top-[30%] aspect-square w-[60%] rounded-full bg-primary/55 blur-[90px]" />
-        <div className="animate-aurora absolute -right-[15%] top-[10%] aspect-square w-[50%] rounded-full bg-accent/40 blur-[100px] [animation-delay:-6s] [animation-duration:22s]" />
-        <div className="animate-aurora absolute -bottom-[35%] left-[30%] aspect-square w-[45%] rounded-full bg-gold/25 blur-[100px] [animation-delay:-12s] [animation-duration:26s]" />
-        <div className="ink-grid absolute inset-0" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-ink to-transparent" />
+        <div className="animate-aurora absolute -left-[10%] -top-[30%] aspect-square w-[60%] rounded-full bg-primary/20 blur-[90px] dark:bg-primary/55" />
+        <div className="animate-aurora absolute -right-[15%] top-[10%] aspect-square w-[50%] rounded-full bg-accent/25 blur-[100px] [animation-delay:-6s] [animation-duration:22s] dark:bg-accent/40" />
+        <div className="animate-aurora absolute -bottom-[35%] left-[30%] aspect-square w-[45%] rounded-full bg-gold/45 blur-[100px] [animation-delay:-12s] [animation-duration:26s] dark:bg-gold/25" />
+        <div className="light-grid absolute inset-0 dark:hidden" />
+        <div className="ink-grid absolute inset-0 hidden dark:block" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent dark:from-ink" />
       </div>
 
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-24 pt-10 sm:pt-16 lg:grid-cols-[1.15fr_1fr] lg:gap-8 lg:pb-32 lg:pt-20">
         <div className="space-y-7">
           <div className="flex flex-wrap items-center gap-3">
-            {storefrontExtras(slug).brand || logoUrl ? <BrandMark className="size-11" /> : null}
-            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-ink-foreground/70">{name}</span>
+            {hasBadge || logoUrl ? <BrandMark className={hasBadge ? "size-16" : "size-11"} /> : null}
+            {hasBadge ? <span className="sr-only">{name}</span> : <span className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/60 dark:text-ink-foreground/70">{name}</span>}
           </div>
 
           {status ? (
-            <button type="button" onClick={onFindBranch} className="group inline-flex max-w-full items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.07] py-1.5 pl-3 pr-4 text-sm text-ink-foreground/90 backdrop-blur transition hover:bg-white/[0.12]" data-cy="hero-status">
+            <button type="button" onClick={onFindBranch} className="group inline-flex max-w-full items-center gap-2.5 rounded-full border border-black/10 bg-white/80 py-1.5 pl-3 pr-4 text-sm text-foreground/90 shadow-sm backdrop-blur transition hover:bg-white dark:border-white/15 dark:bg-white/[0.07] dark:text-ink-foreground/90 dark:shadow-none dark:hover:bg-white/[0.12]" data-cy="hero-status">
               <span className="relative flex size-2.5 shrink-0">
                 {status.live ? <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" /> : null}
                 <span className={cn("relative inline-flex size-2.5 rounded-full", status.live ? "bg-success" : "bg-destructive")} />
@@ -92,14 +94,14 @@ export function Hero({ slug, name, tagline, logoUrl, fmt, branches, branch, dish
               <Fragment key={i}>
                 <span className="hero-word" aria-hidden>
                   <span style={{ "--i": i } as CSSProperties}>
-                    {w.highlight ? <span className="animate-gradient-pan bg-gradient-to-r from-accent via-gold to-accent bg-clip-text text-transparent">{w.word}</span> : w.word}
+                    {w.highlight ? <span className="animate-gradient-pan bg-gradient-to-r from-accent via-amber-500 to-accent bg-clip-text text-transparent dark:via-gold">{w.word}</span> : w.word}
                   </span>
                 </span>{" "}
               </Fragment>
             ))}
           </h1>
 
-          <p className="max-w-lg text-lg leading-relaxed text-ink-foreground/75">
+          <p className="max-w-lg text-lg leading-relaxed text-foreground/70 dark:text-ink-foreground/75">
             {copy?.heroIntro ?? "Order for delivery or pickup from the branch nearest you. Choose your dishes and extras, then follow your order live from our kitchen to your door."}
           </p>
 
@@ -109,13 +111,13 @@ export function Hero({ slug, name, tagline, logoUrl, fmt, branches, branch, dish
                 Start your order <ArrowRight className="transition group-hover:translate-x-0.5" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="h-14 rounded-full border-white/20 bg-white/5 px-7 text-base text-ink-foreground backdrop-blur hover:bg-white/15" onClick={onFindBranch} data-cy="hero-branches">
+            <Button size="lg" variant="outline" className="h-14 rounded-full border-foreground/15 bg-white/70 px-7 text-base text-foreground backdrop-blur hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-ink-foreground dark:hover:bg-white/15" onClick={onFindBranch} data-cy="hero-branches">
               <MapPin /> Find a branch
             </Button>
           </div>
 
           {branches.length > 0 ? (
-            <dl className="grid max-w-md grid-cols-3 gap-4 border-t border-white/10 pt-6">
+            <dl className="grid max-w-md grid-cols-3 gap-4 border-t border-black/10 pt-6 dark:border-white/10">
               {[
                 [nBranches, branches.length === 1 ? "branch" : "branches"],
                 [nCities, cities === 1 ? "city" : "cities"],
@@ -124,7 +126,7 @@ export function Hero({ slug, name, tagline, logoUrl, fmt, branches, branch, dish
                 <div key={label as string}>
                   <dt className="sr-only">{label}</dt>
                   <dd className="font-display text-3xl font-semibold tabular-nums sm:text-4xl">{n}</dd>
-                  <dd className="text-xs uppercase tracking-wider text-ink-foreground/60">{label}</dd>
+                  <dd className="text-xs uppercase tracking-wider text-foreground/55 dark:text-ink-foreground/60">{label}</dd>
                 </div>
               ))}
             </dl>
@@ -169,7 +171,7 @@ function HeroStage({ slug, fmt, dishes, categoryName, chat }: { slug: string; fm
                 <div
                   key={`${d.id}-${i}`}
                   aria-hidden
-                  className="absolute inset-x-6 top-6 bottom-16 overflow-hidden rounded-[1.75rem] border border-white/10 opacity-60 shadow-2xl transition-all duration-700"
+                  className="absolute inset-x-6 top-6 bottom-16 overflow-hidden rounded-[1.75rem] border border-black/5 opacity-60 shadow-xl transition-all duration-700 dark:border-white/10 dark:shadow-2xl"
                   style={{ transform: `translateZ(${-70 - i * 50}px) rotate(${i === 0 ? -9 : 8}deg) translateX(${i === 0 ? -14 : 16}%)` }}
                 >
                   <FoodArt name={d.name} hint={categoryName(d.categoryId)} imageUrl={d.imageUrl} />
@@ -181,7 +183,7 @@ function HeroStage({ slug, fmt, dishes, categoryName, chat }: { slug: string; fm
           <Link
             key={main.id}
             to={`/${slug}/item/${main.id}`}
-            className="animate-card-in group absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] bg-card text-card-foreground shadow-[0_40px_80px_-20px_rgb(0_0_0/0.6)] ring-1 ring-white/10"
+            className="animate-card-in group absolute inset-0 flex flex-col overflow-hidden rounded-[1.75rem] bg-card text-card-foreground shadow-[0_30px_60px_-20px_rgb(20_33_61/0.3)] ring-1 ring-black/5 dark:shadow-[0_40px_80px_-20px_rgb(0_0_0/0.6)] dark:ring-white/10"
             style={{ transform: "translateZ(40px)" }}
             data-cy="hero-dish"
           >
@@ -209,12 +211,12 @@ function HeroStage({ slug, fmt, dishes, categoryName, chat }: { slug: string; fm
               The outer element holds the 3D depth; the inner one floats (an animated transform would
               otherwise replace translateZ and drop the chip behind the card). */}
           <div className="absolute -left-3 top-[34%] sm:-left-12" style={{ transform: "translateZ(90px)" }} aria-hidden>
-            <div className="animate-float w-44 rounded-2xl border border-white/15 bg-ink/85 p-3 text-xs text-ink-foreground shadow-2xl backdrop-blur-md">
-              <p className="flex items-center gap-1.5 font-semibold"><ChefHat className="size-3.5 text-gold" /> Live order tracking</p>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
+            <div className="animate-float w-44 rounded-2xl border border-black/5 bg-white/90 p-3 text-xs text-foreground shadow-xl backdrop-blur-md dark:border-white/15 dark:bg-ink/85 dark:text-ink-foreground dark:shadow-2xl">
+              <p className="flex items-center gap-1.5 font-semibold"><ChefHat className="size-3.5 text-accent dark:text-gold" /> Live order tracking</p>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/10 dark:bg-white/15">
                 <div className="h-full rounded-full bg-gradient-to-r from-primary to-gold" style={{ animation: reduced ? undefined : "kiros-progress 6s ease-in-out infinite", width: reduced ? "68%" : undefined }} />
               </div>
-              <p className="mt-1.5 flex justify-between text-[10px] text-ink-foreground/60"><span>Paid</span><span>Packing</span><span>On the way</span></p>
+              <p className="mt-1.5 flex justify-between text-[10px] text-foreground/55 dark:text-ink-foreground/60"><span>Paid</span><span>Packing</span><span>On the way</span></p>
             </div>
           </div>
           <div className="absolute -right-2 bottom-28 sm:-right-10" style={{ transform: "translateZ(110px)" }} aria-hidden>
@@ -224,8 +226,8 @@ function HeroStage({ slug, fmt, dishes, categoryName, chat }: { slug: string; fm
             </div>
           </div>
           <div className="absolute -right-4 -top-4 hidden sm:block lg:-right-14" style={{ transform: "translateZ(70px)" }} aria-hidden>
-            <div className="animate-float flex items-center gap-2 rounded-full border border-white/15 bg-ink/70 px-3 py-2 text-xs font-medium text-ink-foreground shadow-xl backdrop-blur-md [animation-delay:-1.5s]">
-              <Bike className="size-4 text-gold" /> Delivery <span className="opacity-40">/</span> <StoreIcon className="size-4 text-gold" /> Pickup
+            <div className="animate-float flex items-center gap-2 rounded-full border border-black/5 bg-white/90 px-3 py-2 text-xs font-medium text-foreground shadow-xl backdrop-blur-md [animation-delay:-1.5s] dark:border-white/15 dark:bg-ink/70 dark:text-ink-foreground">
+              <Bike className="size-4 text-accent dark:text-gold" /> Delivery <span className="opacity-40">/</span> <StoreIcon className="size-4 text-accent dark:text-gold" /> Pickup
             </div>
           </div>
         </div>
@@ -234,7 +236,7 @@ function HeroStage({ slug, fmt, dishes, categoryName, chat }: { slug: string; fm
       {n > 1 ? (
         <div className="mt-6 flex justify-center gap-2" role="group" aria-label="Featured dishes">
           {dishes.map((d, i) => (
-            <button key={d.id} type="button" onClick={() => setIndex(i)} aria-label={`Show ${d.name}`} aria-current={i === index % n} className={cn("h-1.5 rounded-full transition-all", i === index % n ? "w-8 bg-gold" : "w-1.5 bg-white/30 hover:bg-white/60")} />
+            <button key={d.id} type="button" onClick={() => setIndex(i)} aria-label={`Show ${d.name}`} aria-current={i === index % n} className={cn("h-1.5 rounded-full transition-all", i === index % n ? "w-8 bg-accent dark:bg-gold" : "w-1.5 bg-foreground/20 hover:bg-foreground/40 dark:bg-white/30 dark:hover:bg-white/60")} />
           ))}
         </div>
       ) : null}

@@ -15,6 +15,7 @@ const MenuPage = lazy(() => import("@/pages/store/MenuPage"))
 const ItemPage = lazy(() => import("@/pages/store/ItemPage"))
 const AccountPage = lazy(() => import("@/pages/store/AccountPage"))
 const OrdersPage = lazy(() => import("@/pages/store/OrdersPage"))
+const LegalPage = lazy(() => import("@/pages/store/LegalPage"))
 const OrderDetailPage = lazy(() => import("@/pages/store/OrderDetailPage"))
 const CheckoutReturnPage = lazy(() => import("@/pages/store/CheckoutReturnPage"))
 const FaqPage = lazy(() => import("@/pages/store/FaqPage"))
@@ -128,6 +129,9 @@ export default function App() {
             <Route path="faq" element={<FaqPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="contact" element={<ContactPage />} />
+            <Route path="privacy-policy" element={<LegalPage doc="privacy-policy" />} />
+            <Route path="delivery-policy" element={<LegalPage doc="delivery-policy" />} />
+            <Route path="terms" element={<LegalPage doc="terms" />} />
             <Route path="*" element={<Navigate to="." replace />} />
           </Route>
 

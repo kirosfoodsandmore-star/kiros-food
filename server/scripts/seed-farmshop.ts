@@ -12,7 +12,7 @@ import { AppDataSource } from "../infrastructure/database/dataSource";
 import { BranchRepository } from "../modules/branch/repositories/branch.repository";
 import { MenuRepository } from "../modules/menu/repositories/menu.repository";
 import { OrganizationRepository } from "../modules/organization/repositories/organization.repository";
-import { FARMSHOP_MENU_NAME, installFarmshopMenu } from "./farmshopMenu";
+import { FARMSHOP_MENU_NAME, LEGACY_FARMSHOP_MENU_NAME, installFarmshopMenu } from "./farmshopMenu";
 
 const OLD_DEMO_NAME = "Demo Kitchen";
 const OLD_DEMO_TAGLINE = "Two kitchens, one bag: café classics and bubble tea.";
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
 
   const menus = MenuRepository.Instance;
   const existing = await menus.listMenus(org.id);
-  if (existing.some((m) => m.name === FARMSHOP_MENU_NAME)) {
+  if (existing.some((m) => m.name === FARMSHOP_MENU_NAME || m.name === LEGACY_FARMSHOP_MENU_NAME)) {
     console.log(`"${FARMSHOP_MENU_NAME}" already exists for "${slug}" — nothing to do.`);
     await AppDataSource.destroy();
     return;
@@ -47,7 +47,7 @@ async function main(): Promise<void> {
 
   // Only replace the storefront name / headline when they are still the old demo text.
   const profile: Record<string, string> = {};
-  if (org.name === OLD_DEMO_NAME) profile.name = "KIROS FarmShop";
+  if (org.name === OLD_DEMO_NAME) profile.name = "KIROS Foods";
   if (org.tagline === OLD_DEMO_TAGLINE) profile.tagline = "Fresh from the farm: salads, smoothies and juices.";
   if (Object.keys(profile).length > 0) await OrganizationRepository.Instance.update(org.id, profile);
 

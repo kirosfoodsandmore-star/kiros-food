@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* `dark:` follows the app's own theme (the .dark class set by ThemeContext), not the device setting: a visitor on a dark
+   device who has Light selected must get the light styles. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Design tokens: the one place colours, type, radii and spacing live. Reskin here. ──────── */
 :root {
   --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
@@ -302,6 +306,10 @@
   z-index: -1;
 }
 
+/* The storefront hero is bright by day and the ink stage by night: its film grain only shows on the dark theme. */
+.hero-bright.grain::before { opacity: 0; }
+.dark .hero-bright.grain::before { opacity: 0.09; }
+
 /* Film grain + fine grid for the ink surfaces. */
 .grain::before {
   content: "";
@@ -314,6 +322,13 @@
 }
 .ink-grid {
   background-image: linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+}
+
+/* The same fine grid for bright surfaces: dark lines instead of white. */
+.light-grid {
+  background-image: linear-gradient(rgb(20 33 61 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(20 33 61 / 0.05) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
 }

@@ -78,7 +78,7 @@ export function AuthShell({ title, description, children }: { title: string; des
     <main className="grid min-h-dvh place-items-center bg-background px-4 py-10">
       <div className="w-full max-w-sm space-y-4">
         <Link to="/" className="flex items-center justify-center text-xl" aria-label="Home">
-          <BrandLogo slug={import.meta.env.VITE_DEFAULT_STORE_SLUG as string | undefined} className="h-11" />
+          <BrandLogo slug={import.meta.env.VITE_DEFAULT_STORE_SLUG as string | undefined} className="size-20" />
         </Link>
         <Card>
           <CardHeader>
