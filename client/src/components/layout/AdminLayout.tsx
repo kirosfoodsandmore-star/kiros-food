@@ -3,7 +3,7 @@
 // sidebar (portal="rider"), so riders and admins get the same layout without the rider ever seeing admin screens.
 import { ExternalLink, LogOut, Menu as MenuIcon, User, Volume2, VolumeX } from "lucide-react"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { Link, Outlet, useNavigate } from "react-router-dom"
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { BrandLogo } from "@/components/shared/BrandLogo"
 import { PageLoader } from "@/components/shared/PageLoader"
@@ -41,6 +41,14 @@ export default function AdminLayout({ portal = "admin" }: { portal?: "admin" | "
   const confirmsPayments = canAny("payments.confirm")
   const confirmsPaymentsRef = useRef(confirmsPayments)
   confirmsPaymentsRef.current = confirmsPayments
+  // A customer's chat message goes to whoever can read chats (the server only sends it to them for their branches).
+  const readsChats = canAny("chat.view")
+  const readsChatsRef = useRef(readsChats)
+  readsChatsRef.current = readsChats
+  // Already reading that order (its page shows the chat live), so a pop-up would only repeat what's on screen.
+  const { pathname } = useLocation()
+  const pathRef = useRef(pathname)
+  pathRef.current = pathname
 
   useEffect(() => {
     connectSocket("staff")
@@ -81,6 +89,13 @@ export default function AdminLayout({ portal = "admin" }: { portal?: "admin" | "
     toast.info(`Payment to confirm · ${o.number}`, { description: o.branchName, duration: 15_000, action: { label: "Open", onClick: () => navigate(`/admin/orders/${o.id}`) } })
   }, [navigate])
   useSocketEvent<OrderSummary>("staff", "payment:claimed", onPaymentClaimed)
+  const onChatMessage = useCallback((m: { orderId: string; orderNumber: string; authorType: "staff" | "customer"; authorName: string; preview: string }) => {
+    if (m.authorType !== "customer" || !readsChatsRef.current) return
+    if (pathRef.current.startsWith(`/admin/orders/${m.orderId}`)) return
+    if (soundRef.current) playChime()
+    toast.info(`New message · ${m.orderNumber}`, { description: `${m.authorName}: ${m.preview}`, duration: 15_000, action: { label: "Open", onClick: () => navigate(`/admin/orders/${m.orderId}`) } })
+  }, [navigate])
+  useSocketEvent("staff", "chat:message", onChatMessage)
   // A delivery handed to this person (a rider, or a manager who also rides): the server tells them alone.
   useDeliveryAlerts(sound, rider ? "/rider" : "/admin/deliveries")
   // The sidebar's order count has to move on every page, not only the ones that list orders.

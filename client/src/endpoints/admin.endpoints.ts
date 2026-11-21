@@ -169,7 +169,8 @@ export const PaymentEndpoints = {
 export const ChatEndpoints = {
   conversations: (params: { branchId?: string; unreadOnly?: boolean; page?: number; limit?: number } = {}) => wrapCall<ConversationRow[]>("GET", `${A}/chat/conversations`, params),
   open: (orderId: string) => wrapCall<ConversationView>("GET", `${A}/chat/orders/${orderId}`),
-  send: (orderId: string, body: string) => wrapCall<ChatMessage>("POST", `${A}/chat/orders/${orderId}/messages`, { body }),
+  send: (orderId: string, body: string, file?: File | null) =>
+    file ? uploadWithFields<ChatMessage>(`${A}/chat/orders/${orderId}/messages`, file, { body }, "file") : wrapCall<ChatMessage>("POST", `${A}/chat/orders/${orderId}/messages`, { body }),
 }
 
 export const ReportEndpoints = {

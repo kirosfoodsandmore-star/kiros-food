@@ -350,6 +350,14 @@ export type CheckoutResult =
       payment: { method: "transfer"; reference: string; amount: number; bankAccounts: BankAccountPublic[]; instructions: string | null; deadline: string }
     }
 
+/** A photo or PDF sent in the conversation. */
+export interface ChatAttachment {
+  url: string
+  name: string
+  mimeType: string
+  bytes: number
+}
+
 export interface ChatMessage {
   id: string
   conversationId: string
@@ -357,7 +365,10 @@ export interface ChatMessage {
   authorType: "staff" | "customer"
   authorId: string
   authorName: string
+  /** Empty when the message is only an attachment. */
   body: string
+  /** Absent on messages from before attachments existed. */
+  attachment?: ChatAttachment | null
   createdAt: string | null
 }
 

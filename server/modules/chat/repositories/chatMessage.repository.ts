@@ -4,6 +4,14 @@
 import { FIRESTORE_COLLECTIONS } from "../../../config/constants";
 import { FieldValue, firestoreUnavailable, getFirestore, Timestamp } from "../../../infrastructure/firestore/firestoreClient";
 
+/** A photo or PDF sent in the conversation. The file itself is on Cloudinary; this is what the chat needs to show it. */
+export interface ChatAttachment {
+  url: string;
+  name: string;
+  mimeType: string;
+  bytes: number;
+}
+
 export interface ChatMessageDTO {
   id: string;
   conversationId: string;
@@ -11,7 +19,9 @@ export interface ChatMessageDTO {
   authorType: "staff" | "customer";
   authorId: string;
   authorName: string;
+  /** May be empty when the message is just an attachment. */
   body: string;
+  attachment: ChatAttachment | null;
   createdAt: string | null;
 }
 
@@ -24,12 +34,14 @@ interface MessageDoc {
   authorId: string;
   authorName: string;
   body: string;
+  /** Absent on messages written before attachments existed. */
+  attachment?: ChatAttachment | null;
   createdAt: Timestamp | null;
   deletedAt: Timestamp | null;
 }
 
 function toDTO(id: string, d: MessageDoc): ChatMessageDTO {
-  return { id, conversationId: d.conversationId, orderId: d.orderId, authorType: d.authorType, authorId: d.authorId, authorName: d.authorName, body: d.body, createdAt: d.createdAt ? d.createdAt.toDate().toISOString() : null };
+  return { id, conversationId: d.conversationId, orderId: d.orderId, authorType: d.authorType, authorId: d.authorId, authorName: d.authorName, body: d.body, attachment: d.attachment ?? null, createdAt: d.createdAt ? d.createdAt.toDate().toISOString() : null };
 }
 
 export class ChatMessageRepository {

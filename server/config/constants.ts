@@ -55,6 +55,7 @@ export const STORAGE_FOLDERS = {
   item: "kiros/items",
   category: "kiros/categories",
   receipt: "kiros/transfer-receipts",
+  chat: "kiros/chat-attachments",
 } as const;
 
 /** Firestore collections (server-mediated writes only — see ai_agent_flow_firebase.md). */

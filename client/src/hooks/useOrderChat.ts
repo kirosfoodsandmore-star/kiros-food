@@ -62,7 +62,8 @@ export function useOrderChat({ kind, slug, orderId, enabled = true }: Options) {
   useSocketEvent<{ orderId: string }>(kind, "chat:message", onSocketMessage, enabled)
 
   const send = useMutation({
-    mutationFn: async (body: string) => (kind === "customer" ? unwrap(await StoreEndpoints.sendChat(slug!, orderId!, body)) : unwrap(await ChatEndpoints.send(orderId!, body))),
+    mutationFn: async ({ body, file }: { body: string; file?: File | null }) =>
+      kind === "customer" ? unwrap(await StoreEndpoints.sendChat(slug!, orderId!, body, file)) : unwrap(await ChatEndpoints.send(orderId!, body, file)),
     onSuccess: () => {
       if (live === null) void qc.invalidateQueries({ queryKey: key })
     },

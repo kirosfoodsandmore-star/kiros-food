@@ -29,7 +29,11 @@ export interface DomainEvents {
     orderId: string;
     conversationId: string;
     authorType: "staff" | "customer";
+    /** Who wrote it, as shown in the conversation. */
+    authorName: string;
     customerId: string;
+    orderNumber: string;
+    /** The start of the text, or "Sent a photo" / "Sent a file" for an attachment on its own. */
     preview: string;
   };
 }

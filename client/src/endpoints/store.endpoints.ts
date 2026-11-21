@@ -85,5 +85,6 @@ export const StoreEndpoints = {
 
   // Chat
   chat: (slug: string, orderId: string) => wrapCall<ConversationView>("GET", `${base(slug)}/orders/${orderId}/chat`),
-  sendChat: (slug: string, orderId: string, body: string) => wrapCall<ChatMessage>("POST", `${base(slug)}/orders/${orderId}/chat/messages`, { body }),
+  sendChat: (slug: string, orderId: string, body: string, file?: File | null) =>
+    file ? uploadWithFields<ChatMessage>(`${base(slug)}/orders/${orderId}/chat/messages`, file, { body }, "file") : wrapCall<ChatMessage>("POST", `${base(slug)}/orders/${orderId}/chat/messages`, { body }),
 }
