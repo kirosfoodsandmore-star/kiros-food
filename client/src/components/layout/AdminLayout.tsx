@@ -49,12 +49,19 @@ export default function AdminLayout({ portal = "admin" }: { portal?: "admin" | "
   useEffect(() => {
     if (!rider) return
     // iPhones ignore the manifest's icons and want their own touch icon.
+    // index.html already carries the customer app's manifest and touch icon, and a browser reads the FIRST of each, so
+    // take those out while the rider portal is open (and put them back when it closes).
+    const customer = Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="manifest"], link[rel="apple-touch-icon"]'))
+    customer.forEach((l) => l.remove())
     const links = [
       { rel: "manifest", href: "/rider.webmanifest" },
       { rel: "apple-touch-icon", href: "/rider-apple-touch-icon.png" },
     ].map((l) => Object.assign(document.createElement("link"), l))
     links.forEach((l) => document.head.appendChild(l))
-    return () => links.forEach((l) => l.remove())
+    return () => {
+      links.forEach((l) => l.remove())
+      customer.forEach((l) => document.head.appendChild(l))
+    }
   }, [rider])
   const onNewOrder = useCallback((o: OrderSummary) => {
     if (!handlesOrdersRef.current) return

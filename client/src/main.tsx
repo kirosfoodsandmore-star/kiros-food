@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { ThemeProvider } from "@/contexts/ThemeContext"
+import "@/lib/installApp" // starts listening for the browser's install prompt before any page renders
 import { queryClient } from "@/lib/queryClient"
 import "@/index.css"
 

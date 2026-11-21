@@ -1,9 +1,10 @@
 // Side menu (phones and tablets; on large screens the header carries the links). It is also home to what the
 // header leaves out: the team login, call/WhatsApp, opening hours and the colour theme.
-import { CircleHelp, ClipboardList, Clock, House, Info, MapPin, MessageCircle, Phone, ShoppingBasket, Truck, User, type LucideIcon } from "lucide-react"
+import { CircleHelp, ClipboardList, Clock, Download, House, Info, MapPin, MessageCircle, Phone, ShoppingBasket, Truck, User, type LucideIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 import { ThemeSwitcher } from "@/components/shared/ThemeSwitcher"
 import { BrandMark } from "@/components/store/BrandMark"
+import { InstallApp } from "@/components/store/InstallApp"
 import { useTeamEntries } from "@/components/store/TeamLogin"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -74,6 +75,14 @@ export function NavDrawer() {
               <MapPin className="size-5 text-primary" />
               Branches
             </button>
+            <InstallApp>
+              {(install) => (
+                <button type="button" onClick={install} className={rowCls} data-cy="nav-install">
+                  <Download className="size-5 text-primary" />
+                  Get the app
+                </button>
+              )}
+            </InstallApp>
           </nav>
 
           {/* For the team: admins, staff and riders each have their own sign-in. */}

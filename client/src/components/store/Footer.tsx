@@ -2,9 +2,10 @@
 // quick links, head office with hours, live branch status, socials, policies and a giant wordmark.
 // Name, phone, email, address and social links come from Settings; sales email, hours and the company
 // links come from lib/storefrontExtras.
-import { Apple, ArrowRight, ArrowUp, Clock, Headset, Leaf, Mail, MapPin, MessageCircle, Phone } from "lucide-react"
+import { Apple, ArrowRight, ArrowUp, Clock, Download, Headset, Leaf, Mail, MapPin, MessageCircle, Phone } from "lucide-react"
 import { Link, useMatch } from "react-router-dom"
 import { BrandMark } from "@/components/store/BrandMark"
+import { InstallApp } from "@/components/store/InstallApp"
 import { useTeamEntries } from "@/components/store/TeamLogin"
 import { SocialLinks } from "@/components/store/SocialLinks"
 import { Button } from "@/components/ui/button"
@@ -105,6 +106,9 @@ export function StoreFooter() {
             <h3 className={headingCls}>Quick links</h3>
             <ul className="space-y-2.5 text-ink-foreground/80">
               {links.map((l) => <li key={l.label}><FooterAnchor link={l} className={linkCls} /></li>)}
+              <InstallApp>
+                {(install) => <li><button type="button" onClick={install} className={cn("inline-flex items-center gap-2", linkCls)} data-cy="footer-install"><Download className="size-3.5 text-gold" />Get the app</button></li>}
+              </InstallApp>
             </ul>
           </nav>
 

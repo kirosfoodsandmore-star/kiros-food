@@ -1,9 +1,10 @@
 // Storefront hero: a full-bleed stage with drifting soft colour (bright cream and mint by day, deep ink by night),
 // a word-by-word headline, live opening status, counting stats and an interactive 3D stack of the restaurant's real dishes.
-import { ArrowRight, Bike, ChefHat, MapPin, MessageCircle, Plus, Store as StoreIcon } from "lucide-react"
+import { ArrowRight, Bike, ChefHat, Download, MapPin, MessageCircle, Plus, Store as StoreIcon } from "lucide-react"
 import { Fragment, useRef, useState, type CSSProperties } from "react"
 import { Link } from "react-router-dom"
 import { Money } from "@/components/shared/Money"
+import { InstallApp } from "@/components/store/InstallApp"
 import { Button } from "@/components/ui/button"
 import { useCountUp, useInterval, usePrefersReducedMotion } from "@/hooks/useMotion"
 import type { CurrencyFormat } from "@/lib/money"
@@ -114,6 +115,13 @@ export function Hero({ slug, name, tagline, logoUrl, fmt, branches, branch, dish
             <Button size="lg" variant="outline" className="h-14 rounded-full border-foreground/15 bg-white/70 px-7 text-base text-foreground backdrop-blur hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-ink-foreground dark:hover:bg-white/15" onClick={onFindBranch} data-cy="hero-branches">
               <MapPin /> Find a branch
             </Button>
+            <InstallApp>
+              {(install) => (
+                <Button size="lg" variant="outline" className="h-14 rounded-full border-foreground/15 bg-white/70 px-7 text-base text-foreground backdrop-blur hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-ink-foreground dark:hover:bg-white/15" onClick={install} data-cy="hero-install">
+                  <Download /> Get the app
+                </Button>
+              )}
+            </InstallApp>
           </div>
 
           {branches.length > 0 ? (
