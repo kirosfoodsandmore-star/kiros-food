@@ -129,13 +129,13 @@ export class MenuRepository {
     return db().getRepository(CategoryEntity).findOne({ where: { id, organizationId } });
   }
 
-  async createCategory(data: Omit<Category, "id" | "createdAt" | "updatedAt" | "deletedAt">): Promise<Category> {
-    const repo = db().getRepository(CategoryEntity);
+  async createCategory(data: Omit<Category, "id" | "createdAt" | "updatedAt" | "deletedAt">, tx?: Tx): Promise<Category> {
+    const repo = db(tx).getRepository(CategoryEntity);
     return repo.save(repo.create(data));
   }
 
-  async updateCategory(organizationId: string, id: string, data: Partial<Category>): Promise<void> {
-    await db().getRepository(CategoryEntity).update({ id, organizationId }, data);
+  async updateCategory(organizationId: string, id: string, data: Partial<Category>, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(CategoryEntity).update({ id, organizationId }, data);
   }
 
   async softDeleteCategory(organizationId: string, id: string): Promise<void> {
@@ -171,8 +171,8 @@ export class MenuRepository {
     await db(tx).getRepository(ItemEntity).update({ id, organizationId }, data);
   }
 
-  async softDeleteItem(organizationId: string, id: string): Promise<void> {
-    await db().getRepository(ItemEntity).softDelete({ id, organizationId });
+  async softDeleteItem(organizationId: string, id: string, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(ItemEntity).softDelete({ id, organizationId });
   }
 
   async setItemGroups(itemId: string, groupIds: string[], tx?: Tx): Promise<void> {
@@ -219,8 +219,8 @@ export class MenuRepository {
     return repo.save(repo.create(data));
   }
 
-  async updateGroup(organizationId: string, id: string, data: Partial<OptionGroup>): Promise<void> {
-    await db().getRepository(OptionGroupEntity).update({ id, organizationId }, data);
+  async updateGroup(organizationId: string, id: string, data: Partial<OptionGroup>, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(OptionGroupEntity).update({ id, organizationId }, data);
   }
 
   async softDeleteGroup(organizationId: string, id: string): Promise<void> {
@@ -236,12 +236,12 @@ export class MenuRepository {
     return repo.save(repo.create(data));
   }
 
-  async updateOption(organizationId: string, id: string, data: Partial<Option>): Promise<void> {
-    await db().getRepository(OptionEntity).update({ id, organizationId }, data);
+  async updateOption(organizationId: string, id: string, data: Partial<Option>, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(OptionEntity).update({ id, organizationId }, data);
   }
 
-  async softDeleteOption(organizationId: string, id: string): Promise<void> {
-    await db().getRepository(OptionEntity).softDelete({ id, organizationId });
+  async softDeleteOption(organizationId: string, id: string, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(OptionEntity).softDelete({ id, organizationId });
   }
 
   // ── Storefront reads ───────────────────────────────────────────────────────

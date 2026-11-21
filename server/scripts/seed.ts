@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   await organizations.update(org, { tagline: "Fresh from the farm: salads, smoothies and juices.", orderPrefix: "KRS" });
 
   // Menu ────────────────────────────────────────────────────────────────────
-  // Salads, shawarma, smoothies, parfait and juices. Prices are placeholders; see scripts/farmshopMenu.ts.
+  // Salads, fruit salads, shawarma, smoothies, parfait, overnight oats and juices. Prices are placeholders; see scripts/farmshopMenu.ts.
   const { menuId, itemCount, hiddenItems } = await installFarmshopMenu(org, 0);
 
   // Branches ────────────────────────────────────────────────────────────────

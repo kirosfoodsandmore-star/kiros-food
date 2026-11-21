@@ -12,7 +12,8 @@
     "migration:revert": "tsx scripts/migrate.ts revert",
     "seed": "tsx scripts/seed.ts",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
-    "seed:farmshop": "tsx scripts/seed-farmshop.ts"
+    "seed:farmshop": "tsx scripts/seed-farmshop.ts",
+    "sync:farmshop": "tsx scripts/sync-farmshop.ts"
   },
   "engines": {
     "node": ">=20"

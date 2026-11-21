@@ -1,4 +1,4 @@
-// npm run seed:farmshop — adds the KIROS FarmShop menu (salads, shawarma, smoothies, parfait, juices) to an
+// npm run seed:farmshop — adds the KIROS FarmShop menu (salads, fruit salads, shawarma, smoothies, parfait, overnight oats, juices) to an
 // existing restaurant and serves it first at every branch. Safe to re-run: skips when the menu already exists.
 //
 //   SEED_SLUG=<slug>            restaurant to install into (default: kiros)

@@ -60,12 +60,12 @@ const KIROS_FOODS: StorefrontExtras = {
   displayName: "Kiros Foods",
   brand: { mark: brandMark },
   // From "KIROS FarmShop — Menu Ordering User Stories.md": the shop menu is salads (build your own or a signature
-  // salad), shawarma, wraps and sandwiches, smoothies, parfait and juices.
+  // salad), fruit salads, shawarma, wraps and sandwiches, smoothies, parfait, overnight oats and chia pudding, and juices.
   home: {
     heroIntro: "Build your own salad from over 40 fresh ingredients, or pick a signature salad, smoothie, fresh juice or shawarma. Delivery or pickup from your nearest KIROS branch.",
     heroChat: ["Dressing on the side, please?", "Of course! Packing your salad now."],
-    makeItYours: "Choose a base, up to 10 fillings, 2 cravings and a dressing, then add a protein if you like. The price updates as you go.",
-    buildYourOwnIntro: "Start with a base, add up to 10 fillings, pick 2 cravings and finish with a dressing. Add a protein for a little extra and watch the price update as you build.",
+    makeItYours: "Choose a base, up to 10 fillings, 2 cravings and a dressing. Want protein? Go for the protein salad: 4 cravings and your pick of protein. The price updates as you go.",
+    buildYourOwnIntro: "Start with a base, add up to 10 fillings, pick 2 cravings and finish with a dressing. Want protein? The protein salad takes 4 cravings plus a protein of your choice. Watch the price update as you build.",
   },
   salesEmail: "sales@kiros.ng",
   hours: ["Mon–Sat: 8:30am–7:30pm", "Sun: 12:30pm–4:30pm"],
@@ -78,7 +78,7 @@ const KIROS_FOODS: StorefrontExtras = {
       "Kiros Foods, located in Nigeria, is a retail outlet that usually sells produce directly from our farms. We resell related goods such as locally produced groceries, foods, drinks and delicatessen products.",
       "We offer direct sales to our consumers, and we allow other merchants to retain a larger portion of the resulting products than they can obtain by selling to a wholesaler or larger reseller.",
       "Our shops sell higher-margin premium goods such as organic produce of known local provenance, in order to differentiate our offerings from those in supermarkets.",
-      "Our kitchen turns that produce into food to order: build-your-own and signature salads, smoothies, parfait, natural juice blends, shawarma, wraps and sandwiches.",
+      "Our kitchen turns that produce into food to order: build-your-own and signature salads, fruit salads, smoothies, parfait, overnight oats, chia pudding, natural juice blends, shawarma, wraps and sandwiches.",
     ],
     quote: "Fresh and organic farm produce you can trust.",
     // Written from statements in the FAQ and welcome text. The website's other items (Overall Healthy, Environmental

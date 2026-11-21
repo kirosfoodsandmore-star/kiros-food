@@ -1,5 +1,5 @@
 // The KIROS FarmShop menu, from "KIROS FarmShop — Menu Ordering User Stories.md" (menu notes taken at the shop on
-// 14 Nov 2026). Used by `npm run seed` (fresh database) and `npm run seed:farmshop` (adds it to an existing one).
+// 14 Nov 2026, updated 21 Nov 2026 with madam's answers, fruit salads, overnight oat and chia pudding). Used by `npm run seed` (fresh database) and `npm run seed:farmshop` (adds it to an existing one).
 //
 // PRICES ARE PLACEHOLDERS. The notes record no prices; every price here must be confirmed and set in
 // Admin → Menus / Option groups before go-live. Items the notes leave incomplete (a missing name, dressing,
@@ -8,7 +8,7 @@ import { MenuRepository } from "../modules/menu/repositories/menu.repository";
 
 const K = (naira: number) => naira * 100;
 
-interface GroupSpec {
+export interface GroupSpec {
   name: string;
   minSelect: number;
   maxSelect: number;
@@ -16,8 +16,14 @@ interface GroupSpec {
   options: Array<[string, number]>;
 }
 
+const CRAVINGS = ["Quinoa", "Rocket", "Green olives", "Black olives", "Red grapes", "Pomegranate", "Mozzarella cheese", "Parmesan cheese", "Macaroni", "Avocado", "Cherry tomatoes", "Radish"];
+
+/** The two build-your-own salads share Base, Fillings and Dressing. The plain salad takes 2 cravings; the protein salad takes 4 cravings and one protein ("SALAD + Protein – 4 cravings" in the notes). */
+export const PROTEIN_SALAD_CRAVINGS = "Cravings (protein salad)";
+export const PROTEIN_GROUP = "Protein";
+
 // Build-your-own salad: Base → Fillings → Cravings → Dressing → Protein (the order the customer sees them).
-const SALAD_GROUPS: GroupSpec[] = [
+export const SALAD_GROUPS: GroupSpec[] = [
   { name: "Base", minSelect: 1, maxSelect: 1, helpText: null, options: [["White cabbage", 0], ["Lettuce", 0], ["Kale", 0]] },
   {
     name: "Fillings",
@@ -25,7 +31,7 @@ const SALAD_GROUPS: GroupSpec[] = [
     maxSelect: 10,
     helpText: null,
     options: [
-      "Purple cabbage", "Rocket", "Cucumber", "Carrot", "Beetroot", "Chickpeas", "Pickled onions", "Bell peppers", "Tomatoes", "Broccoli", "Cauliflower", "Apple",
+      "Purple cabbage", "Cucumber", "Carrot", "Beetroot", "Chickpeas", "Pickled onions", "Bell peppers", "Tomatoes", "Broccoli", "Cauliflower", "Apple",
       "Coconut shavings", "Kidney beans", "Cashew nuts", "Pumpkin seeds", "Sesame seeds", "Almond nuts", "Hazelnuts", "Chia seeds", "Egg", "Green lentils", "Croutons",
     ].map((n) => [n, 0] as [string, number]),
   },
@@ -34,7 +40,15 @@ const SALAD_GROUPS: GroupSpec[] = [
     minSelect: 2,
     maxSelect: 2,
     helpText: null,
-    options: ["Quinoa", "Green olives", "Black olives", "Red grapes", "Pomegranate", "Mozzarella cheese", "Parmesan cheese", "Macaroni", "Avocado", "Cherry tomatoes", "Radish"].map((n) => [n, 0] as [string, number]),
+    options: CRAVINGS.map((n) => [n, 0] as [string, number]),
+  },
+  // Same twelve cravings as above, but the protein salad takes four. A group owns its options, so this is a second copy.
+  {
+    name: PROTEIN_SALAD_CRAVINGS,
+    minSelect: 4,
+    maxSelect: 4,
+    helpText: "Pick four cravings with your protein.",
+    options: CRAVINGS.map((n) => [n, 0] as [string, number]),
   },
   {
     name: "Dressing",
@@ -44,17 +58,17 @@ const SALAD_GROUPS: GroupSpec[] = [
     options: ["Lime vinaigrette", "Cilantro vinaigrette", "Garlic cider vinaigrette", "Balsamic vinaigrette", "House dressing", "KIROS special dressing"].map((n) => [n, 0] as [string, number]),
   },
   {
-    name: "Protein add-on",
-    minSelect: 0,
-    maxSelect: 7,
-    helpText: "Add as many proteins as you like, each for an extra charge.",
+    name: PROTEIN_GROUP,
+    minSelect: 1,
+    maxSelect: 1,
+    helpText: "Choose one protein. Each one is an extra charge.",
     options: [["Shrimp", K(2500)], ["Chicken", K(2000)], ["Beef", K(2000)], ["Turkey", K(2500)], ["Gizzard", K(1500)], ["Fish", K(2000)], ["Bacon", K(2000)]],
   },
 ];
 
-const PARFAIT_SIZE: GroupSpec = { name: "Parfait size", minSelect: 1, maxSelect: 1, helpText: null, options: [["Medium", 0], ["Big", K(1500)]] };
+export const PARFAIT_SIZE: GroupSpec = { name: "Parfait size", minSelect: 1, maxSelect: 1, helpText: null, options: [["Medium (350ml)", 0], ["Big (500ml)", K(1500)]] };
 
-interface ItemSpec {
+export interface ItemSpec {
   name: string;
   price: number;
   description: string;
@@ -64,7 +78,7 @@ interface ItemSpec {
   groups?: string[];
 }
 
-interface CategorySpec {
+export interface CategorySpec {
   name: string;
   description: string | null;
   /** Categories (by name) the items here recommend under "Goes well with". Left out = the default suggestions. */
@@ -75,12 +89,26 @@ interface CategorySpec {
 /** Salads and shawarma pair with a drink, not with each other. */
 const DRINKS = ["Smoothies", "Juice blends", "Fresh juices"];
 
-const CATEGORIES: CategorySpec[] = [
+export const CATEGORIES: CategorySpec[] = [
   {
     name: "Build your own salad",
-    description: "Pick a base, up to 10 fillings, 2 cravings and a dressing. Add a protein if you like.",
+    description: "Pick a base, up to 10 fillings, 2 cravings and a dressing. Want protein? Go for the protein salad: 4 cravings and your choice of protein.",
     goesWith: DRINKS,
-    items: [{ name: "Build Your Salad", price: K(5000), description: "Your salad, your way: one base, up to 10 fillings, 2 cravings and your choice of dressing.", featured: true, groups: SALAD_GROUPS.map((g) => g.name) }],
+    items: [
+      {
+        name: "Build Your Salad",
+        price: K(5000),
+        description: "Your salad, your way: one base, up to 10 fillings, 2 cravings and your choice of dressing.",
+        featured: true,
+        groups: ["Base", "Fillings", "Cravings", "Dressing"],
+      },
+      {
+        name: "Build Your Protein Salad",
+        price: K(5000),
+        description: "Your salad with protein: one base, up to 10 fillings, 4 cravings, your choice of dressing and one protein (shrimp, chicken, beef, turkey, gizzard, fish or bacon).",
+        groups: ["Base", "Fillings", PROTEIN_SALAD_CRAVINGS, "Dressing", PROTEIN_GROUP],
+      },
+    ],
   },
   {
     name: "Signature salads",
@@ -92,8 +120,16 @@ const CATEGORIES: CategorySpec[] = [
       { name: "Kale crunch", price: K(6500), description: "Dressed with garlic cider vinaigrette." },
       { name: "Chunky greek salad", price: K(6500), description: "Dressed with balsamic vinaigrette." },
       { name: "Chicken salad", price: K(8000), description: "With chicken, dressed with house dressing.", featured: true },
-      // Open question: which dressing?
-      { name: "Avocado chicken salad", price: K(8500), description: "With chicken and avocado.", active: false },
+      { name: "Avocado chicken salad", price: K(8500), description: "With chicken and avocado, dressed with KIROS special dressing." },
+    ],
+  },
+  {
+    name: "Fruit salads & splash",
+    description: null,
+    items: [
+      { name: "Basic fruit salad", price: K(4500), description: "Pawpaw, pineapple, apple, cucumber, strawberry, kiwi, banana and grape." },
+      { name: "Exotic fruit salad", price: K(5500), description: "Blueberry, dragon fruit, kiwi, clementine, apple, grape, banana, cucumber, pomegranate and sweet melon.", featured: true },
+      { name: "Fruit splash", price: K(3500), description: "Fresh fruit slush." },
     ],
   },
   {
@@ -103,11 +139,12 @@ const CATEGORIES: CategorySpec[] = [
     items: [
       { name: "Beef shawarma", price: K(5000), description: "Beef shawarma." },
       { name: "Chicken shawarma", price: K(4500), description: "Chicken shawarma.", featured: true },
-      { name: "Mixed grill shawarma", price: K(5500), description: "Mixed grill shawarma." },
-      { name: "Chicken wrap", price: K(4500), description: "Chicken wrap." },
-      { name: "Chicken sandwich", price: K(4000), description: "Cucumber, lettuce, avocado, tomatoes, onions, oregano and sesame seed." },
-      // Open question: what's in it?
-      { name: "Exclusive sandwich", price: K(5000), description: "Ingredients to be confirmed.", active: false },
+      { name: "Mixed grill shawarma", price: K(5500), description: "Beef and chicken shawarma." },
+      { name: "Chicken wrap", price: K(4500), description: "Chicken protein wrap." },
+      { name: "Beef wrap", price: K(5000), description: "Beef protein wrap." },
+      { name: "Fish wrap", price: K(5000), description: "Fish protein wrap." },
+      { name: "Chicken sandwich", price: K(4000), description: "Chicken, cucumber, lettuce, tomatoes, onions and egg." },
+      { name: "Exclusive sandwich", price: K(5000), description: "Chicken, salami, cheese, lettuce, tomatoes, onion and pepperoni." },
     ],
   },
   {
@@ -120,18 +157,25 @@ const CATEGORIES: CategorySpec[] = [
       { name: "Very Berry", price: K(4500), description: "Strawberry, banana, blueberry, grape, coconut milk and honey.", featured: true },
       { name: "Sweet Melon", price: K(4000), description: "Sweet melon, cucumber, mint leaf and banana." },
       { name: "Blueray", price: K(4500), description: "Blueberry, strawberry, banana, Greek yoghurt, sesame seed and honey." },
-      // Open questions: these four have no confirmed name (and one no recipe). Rename and switch on in admin.
+      // Open questions: these three have no confirmed name (the notes call two of them "High protein"). Rename and switch on in admin.
       { name: "Banana oat smoothie (name to confirm)", price: K(4000), description: "Yoghurt, oats, banana, honey, vanilla extract and cinnamon.", active: false },
-      { name: "High protein smoothie (name to confirm)", price: K(5000), description: "Banana, blueberries, oats, yoghurt, peanut butter, honey, almond milk and protein powder.", active: false },
-      { name: "Unnamed smoothie 1", price: K(4000), description: "Recipe to be confirmed.", active: false },
-      { name: "Berry chia smoothie (name to confirm)", price: K(4500), description: "Strawberry, Greek yoghurt, mixed berries, chia seed and almond milk.", active: false },
+      { name: "High protein smoothie 1 (name to confirm)", price: K(5000), description: "Banana, blueberries, oats, yoghurt, peanut butter, honey, almond milk and protein powder.", active: false },
+      { name: "High protein smoothie 2 (name to confirm)", price: K(4500), description: "Strawberry, Greek yoghurt, mixed berries, chia seed and almond milk.", active: false },
     ],
   },
   {
     name: "Parfait",
     description: null,
-    // Open question: are the toppings fixed or picked like salad fillings? Hidden until confirmed.
-    items: [{ name: "Parfait", price: K(3500), description: "Yoghurt, granola, walnuts, cashew nut, coconut, raisin and fresh fruit: blueberry, kiwi, strawberry, grapes, apple and pomegranate.", active: false, groups: [PARFAIT_SIZE.name] }],
+    // Confirmed with madam: every parfait has the same ingredients; the customer only picks the size (Medium 350ml, Big 500ml).
+    items: [{ name: "Parfait", price: K(3500), description: "Greek yoghurt, granola, almond nuts, cashew nut, coconut, raisin and fresh fruit: blueberry, kiwi, strawberry, grapes and apple.", groups: [PARFAIT_SIZE.name] }],
+  },
+  {
+    name: "Overnight oats & chia pudding",
+    description: null,
+    items: [
+      { name: "Overnight oat", price: K(4000), description: "Oat, almond milk, chia seed, blueberry, strawberry, honey and banana." },
+      { name: "Chia pudding", price: K(4000), description: "Chia seed, yoghurt, fruit puree, honey, almond nuts, strawberry, grape, blueberry and coconut milk." },
+    ],
   },
   {
     name: "Juice blends",
@@ -157,6 +201,10 @@ const CATEGORIES: CategorySpec[] = [
   },
 ];
 
+export const ALL_GROUPS: GroupSpec[] = [...SALAD_GROUPS, PARFAIT_SIZE];
+
+export const FARMSHOP_MENU_DESCRIPTION = "Build-your-own salads, signature salads, fruit salads, shawarma, smoothies, parfait, overnight oats and fresh juices.";
+
 /** What customers see. Databases seeded earlier call it "FarmShop Menu"; the seed script still recognises that name. */
 export const FARMSHOP_MENU_NAME = "Kiros Menu";
 export const LEGACY_FARMSHOP_MENU_NAME = "FarmShop Menu";
@@ -167,7 +215,7 @@ export async function installFarmshopMenu(organizationId: string, sortOrder = 0)
   const menu = await menus.createMenu({
     organizationId,
     name: FARMSHOP_MENU_NAME,
-    description: "Build-your-own salads, signature salads, shawarma, smoothies, parfait and fresh juices.",
+    description: FARMSHOP_MENU_DESCRIPTION,
     imageUrl: null,
     imagePublicId: null,
     sortOrder,
@@ -175,7 +223,7 @@ export async function installFarmshopMenu(organizationId: string, sortOrder = 0)
   });
 
   const groupIds: Record<string, string> = {};
-  const groups = [...SALAD_GROUPS, PARFAIT_SIZE];
+  const groups = ALL_GROUPS;
   for (let gi = 0; gi < groups.length; gi++) {
     const spec = groups[gi];
     const g = await menus.createGroup({ organizationId, name: spec.name, helpText: spec.helpText, minSelect: spec.minSelect, maxSelect: spec.maxSelect, sortOrder: gi });
