@@ -121,6 +121,11 @@ const corsList = readList("CORS_ORIGINS");
 const corsOrigins = corsList.length > 0 ? corsList : ["http://localhost:5173"];
 const storefrontUrl = read("STOREFRONT_URL", corsOrigins[0]).replace(/\/+$/, "");
 
+/** True for an address that only works on the computer running the server (localhost, 127.0.0.1, ::1). */
+export function isLocalAddress(url: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(url.trim());
+}
+
 export const env = {
   nodeEnv,
   isProduction,

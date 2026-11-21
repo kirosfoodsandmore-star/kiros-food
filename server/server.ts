@@ -2,7 +2,7 @@
 // Run with `npm run dev` / `npm start` (tsx) — never plain `node`.
 import "reflect-metadata";
 import { createApp } from "./app";
-import { env } from "./config/env";
+import { env, isLocalAddress } from "./config/env";
 import { AppDataSource } from "./infrastructure/database/dataSource";
 import { attachSocketServer, closeSocketServer } from "./infrastructure/realtime/socketServer";
 import { startScheduler, stopScheduler } from "./infrastructure/scheduler/scheduler";
@@ -22,6 +22,11 @@ async function main(): Promise<void> {
   OrderNotifierService.Instance.register();
   ChatNotifierService.Instance.register();
   console.log(emailConfigured() ? `[mail] email on (${env.email.provider === "script" ? "Apps Script relay" : "Gmail"})` : "[mail] email off — EMAIL_* not set");
+  // Emails carry web addresses (staff invites, order alerts, the logo) built from STOREFRONT_URL and APP_URL. Left at their
+  // local defaults, nobody but this computer can open them, so say so loudly instead of sending links that can't work.
+  if (emailConfigured() && (isLocalAddress(env.storefrontUrl) || isLocalAddress(env.appUrl))) {
+    console.warn(`[mail] Links in emails point at this computer (STOREFRONT_URL=${env.storefrontUrl}, APP_URL=${env.appUrl}), so nobody else can open them. Set both to your public addresses.`);
+  }
   console.log(env.firebase.configured ? "[firebase] auth + Firestore on" : "[firebase] NOT configured — staff sign-in is unavailable (passwords live only in Firebase), chat off");
   console.log(env.firebase.configured ? "[push] FCM notifications on" : "[push] FCM notifications off — Firebase service account not set");
   console.log(env.cloudinary.configured ? "[storage] Cloudinary on" : "[storage] Cloudinary not configured — uploads disabled");
