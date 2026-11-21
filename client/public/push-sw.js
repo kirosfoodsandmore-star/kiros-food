@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
         body: m.body || "",
         tag: m.tag || undefined,
         renotify: Boolean(m.tag), // same delivery again (e.g. "ready") still buzzes
-        icon: "/rider-icon.png",
+        icon: m.icon || "/rider-icon.png",
         badge: "/rider-icon.png",
         vibrate: [200, 100, 200],
         requireInteraction: true,

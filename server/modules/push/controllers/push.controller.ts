@@ -1,4 +1,4 @@
-import { actorOf, clientOf, handle, input } from "../../../shared/http/handler";
+import { actorOf, clientOf, customerOf, handle, input } from "../../../shared/http/handler";
 import { PushService } from "../services/push.service";
 import { pushTokenSchema } from "../validators/push.schema";
 
@@ -10,6 +10,16 @@ export class PushController {
   });
   static unregister = handle("Notifications turned off for this device", async (req) => {
     await PushService.Instance.unregisterDevice(actorOf(req), input(req, pushTokenSchema).body.token);
+    return null;
+  });
+
+  // A signed-in customer turns reply alerts on or off for their own device.
+  static customerRegister = handle("Reply alerts turned on for this device", async (req) => {
+    await PushService.Instance.registerCustomerDevice(customerOf(req), input(req, pushTokenSchema).body.token, clientOf(req).userAgent);
+    return null;
+  });
+  static customerUnregister = handle("Reply alerts turned off for this device", async (req) => {
+    await PushService.Instance.unregisterCustomerDevice(customerOf(req), input(req, pushTokenSchema).body.token);
     return null;
   });
 }

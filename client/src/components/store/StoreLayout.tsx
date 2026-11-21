@@ -7,6 +7,7 @@ import { PageLoader } from "@/components/shared/PageLoader"
 import { ErrorState } from "@/components/shared/States"
 import { CustomerProvider } from "@/contexts/CustomerContext"
 import { StoreProvider, useStore, useStoreProfile } from "@/contexts/StoreContext"
+import { useReplyToast } from "@/hooks/useReplyToast"
 import { useStoreBranches } from "@/hooks/useStore"
 import { pickDefaultBranch } from "@/lib/defaultBranch"
 import { storefrontExtras } from "@/lib/storefrontExtras"
@@ -49,6 +50,8 @@ function StoreShell() {
   const { slug, profile } = useStore()
   const { branchId, open, setBranch, clearCart, slug: sessionSlug } = useStoreSession()
   const { data: branches } = useStoreBranches(slug)
+  // A reply from the branch pops up wherever the signed-in customer is on the site.
+  useReplyToast()
   // A first visit shows a branch straight away instead of an empty page behind a picker: the one the admin chose in
   // Settings, or an open one (see lib/defaultBranch). The same applies if the saved branch no longer exists. Visitors can
   // still switch from the branch button in the header. Wait until the session belongs to this restaurant: on a

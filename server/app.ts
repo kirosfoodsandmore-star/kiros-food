@@ -14,7 +14,7 @@ import { adminChatRouter, storeChatRouter } from "./modules/chat/routes/chat.rou
 import { adminCustomerRouter, storeAddressRouter, storeCustomerAuthRouter } from "./modules/customer/routes/customer.routes";
 import { adminCategoryRouter, adminItemRouter, adminMenuRouter, adminOptionGroupRouter, storeMenuRouter } from "./modules/menu/routes/menu.routes";
 import { adminOrderRouter, storeOrderRouter } from "./modules/order/routes/order.routes";
-import { adminPushRouter } from "./modules/push/routes/push.routes";
+import { adminPushRouter, storePushRouter } from "./modules/push/routes/push.routes";
 import { OrganizationController } from "./modules/organization/controllers/organization.controller";
 import { settingsRouter } from "./modules/organization/routes/organization.routes";
 import { contactMessageSchema } from "./modules/organization/validators/contact.schema";
@@ -75,6 +75,7 @@ export function createApp(): Application {
   store.use("/carts", cartRoutes);
   store.use("/auth", storeCustomerAuthRouter);
   store.use("/addresses", storeAddressRouter);
+  store.use("/push", storePushRouter);
   store.use("/", storeChatRouter); // /orders/:id/chat (declared before the order router's /orders/:id)
   store.use("/", storeOrderRouter); // /branches/:branchId/payment-methods, /checkout, /orders…
   v1.use("/store/:slug", store);

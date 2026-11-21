@@ -106,13 +106,16 @@ export default function MyAccountPage() {
       <PageHeader title="My account" />
 
       <Card>
-        <CardContent className="flex flex-wrap items-center gap-4 pt-5">
-          <span className="grid size-14 shrink-0 place-items-center rounded-full bg-primary/10 font-display text-xl font-semibold text-primary" aria-hidden>{initials(user?.name ?? "")}</span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{user?.name}</p>
-            <p className="break-all text-sm text-muted-foreground">{user?.email}</p>
+        {/* Phones: who you are on one row, the role and branch badges underneath. From sm up they sit beside it. */}
+        <CardContent className="flex flex-col gap-3 pt-5 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3 sm:flex-1 sm:gap-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary/10 font-display text-lg font-semibold text-primary sm:size-14 sm:text-xl" aria-hidden>{initials(user?.name ?? "")}</span>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-lg font-semibold leading-tight">{user?.name}</p>
+              <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">{user?.email}</p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             <Badge variant="outline">{user?.roleName}</Badge>
             <Badge variant="outline">{user?.allBranches ? "All branches" : `${branchCount} ${branchCount === 1 ? "branch" : "branches"}`}</Badge>
           </div>

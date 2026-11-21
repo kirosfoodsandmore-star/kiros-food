@@ -83,6 +83,9 @@ export const StoreEndpoints = {
   // Contact form
   contact: (slug: string, body: { name: string; email: string; phone?: string | null; message: string; website?: string }) => wrapCall<{ sent: true }>("POST", `${base(slug)}/contact`, body),
 
+  // Reply alerts (web push) for this customer's device
+  pushRegister: (slug: string, token: string) => wrapCall<null>("PUT", `${base(slug)}/push/token`, { token }),
+  pushUnregister: (slug: string, token: string) => wrapCall<null>("DELETE", `${base(slug)}/push/token`, { token }),
   // Chat
   chat: (slug: string, orderId: string) => wrapCall<ConversationView>("GET", `${base(slug)}/orders/${orderId}/chat`),
   sendChat: (slug: string, orderId: string, body: string, file?: File | null) =>

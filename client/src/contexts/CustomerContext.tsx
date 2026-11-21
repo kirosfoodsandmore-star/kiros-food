@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react"
 import { StoreEndpoints } from "@/endpoints/store.endpoints"
 import { firebaseSignOut } from "@/lib/firebase"
+import { disablePush } from "@/lib/push"
 import { disconnectSocket } from "@/lib/socket"
 import { tokenStorage } from "@/lib/storage"
 import { useStoreSession } from "@/stores/storeSession"
@@ -96,6 +97,8 @@ export function CustomerProvider({ slug, children }: { slug: string; children: R
   )
 
   const signOut = useCallback(async () => {
+    // The next person to use this phone must not get this customer's reply alerts. Needs the session, so it goes first.
+    await Promise.race([disablePush(true, { kind: "customer", slug }), new Promise((r) => setTimeout(r, 3000))]).catch(() => undefined)
     const refresh = tokenStorage.getRefresh("customer")
     if (refresh) void StoreEndpoints.logout(slug, refresh)
     tokenStorage.clear("customer")

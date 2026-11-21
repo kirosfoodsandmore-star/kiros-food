@@ -15,6 +15,7 @@ import { StatusTimeline } from "@/components/shared/StatusTimeline"
 import { NothingSavedNotice } from "@/components/store/AccountPrompts"
 import { ChatPanel } from "@/components/store/ChatPanel"
 import { OrderProgress } from "@/components/store/OrderProgress"
+import { ReplyAlerts } from "@/components/store/ReplyAlerts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCustomer } from "@/contexts/CustomerContext"
@@ -259,6 +260,7 @@ export default function OrderDetailPage() {
               </div>
             </section>
           ) : null}
+          {showChat ? <ReplyAlerts slug={slug} /> : null}
           <HistoryCard events={order.events} />
         </aside>
       </div>
