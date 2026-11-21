@@ -22,8 +22,6 @@ export function useSettingsMutations() {
   const m = <V,>(fn: (v: V) => Promise<unknown>) => useMutation({ mutationFn: fn, onSuccess: done })
   return {
     update: m((b: Body) => SettingsEndpoints.update(b).then(unwrap)),
-    uploadLogo: m((file: File) => SettingsEndpoints.uploadLogo(file).then(unwrap)),
-    removeLogo: m(() => SettingsEndpoints.removeLogo().then(unwrap)),
     updatePayments: m((b: Body) => SettingsEndpoints.updatePayments(b).then(unwrap)),
     testPaystack: useMutation({ mutationFn: async () => unwrap(await SettingsEndpoints.testPaystack()) }),
     addBankAccount: m((b: Body) => SettingsEndpoints.addBankAccount(b).then(unwrap)),

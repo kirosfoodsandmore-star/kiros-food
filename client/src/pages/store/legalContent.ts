@@ -83,7 +83,7 @@ function privacy(c: LegalContext): LegalDoc {
           "For delivery: your address, the point you place on the map, and any delivery instructions you add.",
           "What you ordered, any notes you write, the branch, the amount, when it was placed and how it is progressing.",
           "Messages you send us through order chat or the Contact form.",
-          "For bank transfers: the transfer reference and, if you choose to upload one, a photo or PDF of your receipt.",
+          "For bank transfers: the transfer reference and the photo or PDF of your transfer receipt that you upload.",
           "For card payments: nothing sensitive. Card details are entered on Paystack's secure page and never reach our servers. We only receive confirmation that the payment succeeded, the reference and the amount.",
         ],
         after: [
@@ -302,7 +302,7 @@ function terms(c: LegalContext): LegalDoc {
         paragraphs: ["You can pay in the ways shown at checkout, which can include:"],
         bullets: [
           "Card, bank or USSD payment through Paystack, our payment partner.",
-          "Bank transfer to the account shown on your order page. Use your order number as the reference, transfer the exact amount, and tap \"I have paid\" (you can also upload your receipt). A transfer must be made within the time shown on the order page, otherwise the order is cancelled automatically. The kitchen starts once we have confirmed the money.",
+          "Bank transfer to the account shown on your order page. Use your order number as the reference, transfer the exact amount, upload your transfer receipt and tap \"I have paid\" (if you forget the receipt, you can add it from your order page afterwards). A transfer must be made within the time shown on the order page, otherwise the order is cancelled automatically. The kitchen starts once we have confirmed the money.",
         ],
         after: [
           "Promo codes follow the conditions shown with them, such as an expiry date or a minimum spend, and can only be used as allowed. We cannot tell why a bank declines a card payment: if yours fails, please check with your bank, and contact us if you were charged but see no order.",

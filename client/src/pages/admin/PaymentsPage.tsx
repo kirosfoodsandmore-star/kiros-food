@@ -17,13 +17,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/AuthContext"
 import { useLiveOrderInvalidation, usePaymentMutations, usePaymentQueue } from "@/hooks/useAdminOrders"
 import { useAdminCurrency } from "@/hooks/useFormatters"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 
 export default function PaymentsPage() {
   const fmt = useAdminCurrency()
   const { can } = useAuth()
   useLiveOrderInvalidation()
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   const [status, setStatus] = useState<"claimed" | "pending" | "all">("claimed")
   const [page, setPage] = useState(1)
   useEffect(() => setPage(1), [branchId, status])

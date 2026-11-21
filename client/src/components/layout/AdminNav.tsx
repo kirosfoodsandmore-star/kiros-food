@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { useAttentionOrderCount } from "@/hooks/useAdminOrders"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 import { usePersistedState } from "@/hooks/usePersistedState"
 import { cn, plural } from "@/lib/utils"
 import { NAV_SECTIONS, type NavItem } from "./nav"
@@ -29,7 +30,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   // Counts shown beside links, keyed by the link's path. Only people who can see orders ask for the number.
   // The count is for the branch picked on the admin pages (the same choice the Orders page filters by), so the badge
   // matches the list it leads to; "All branches" counts every one.
-  const [branchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId] = useAdminBranch()
   // (Riders can view orders but have nothing to accept or confirm, so the count isn't for them.)
   const attention = useAttentionOrderCount(canAny("orders.update_status", "orders.reject", "payments.confirm"), branchId).data ?? 0
   const counts: Record<string, { n: number; label: string }> = { "/admin/orders": { n: attention, label: `${plural(attention, "order")} need${attention === 1 ? "s" : ""} attention` } }

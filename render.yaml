@@ -99,10 +99,10 @@ services:
       - key: ALLOW_SIGNUP
         value: "false"
       - key: RIDER_ACCEPT_MINUTES
-        value: "3"
+        value: "10"
       # ── Platform admin & realtime ────────────────────────────────────────
       - key: PLATFORM_ADMIN_EMAILS
-        value: edoghotugiddy@gmail.com,caroline@gmail.com
+        value: edoghotugiddy@gmail.com
       - key: SOCKET_ENABLED
         value: "true"
       - key: SCHEDULER_ENABLED

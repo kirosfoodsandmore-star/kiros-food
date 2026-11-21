@@ -2,7 +2,7 @@
 // branch pinned beside it. Phones: one column in the order people need things (what to do next, what was ordered),
 // with the chat and the history folded away until asked for, so nothing important sits below a long scroll.
 import { format } from "date-fns"
-import { ArrowLeft, ChevronDown, Clock, Copy, History as HistoryIcon, MapPin, MessageCircle, Phone, RefreshCw, Upload } from "lucide-react"
+import { ArrowLeft, Check, ChevronDown, Clock, Copy, FileText, History as HistoryIcon, MapPin, MessageCircle, Phone, RefreshCw, Upload, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -28,6 +28,8 @@ import type { OrderEvent } from "@/types/store.types"
 
 /** On phones the first few lines show and the rest unfold; from the lg breakpoint every line is always shown. */
 const LINES_SHOWN_ON_PHONE = 3
+/** The server refuses a receipt larger than this. */
+const MAX_RECEIPT_MB = 10
 
 export default function OrderDetailPage() {
   const { slug, fmt } = useStore()
@@ -38,13 +40,23 @@ export default function OrderDetailPage() {
   const { data: order, isLoading, error, refetch } = useMyOrder(slug, id, isSignedIn)
   const { cancel, claimTransfer, reorder } = useOrderActions(slug)
   const { data: methods } = usePaymentMethods(slug, order?.branchId ?? null, order?.paymentMethod === "transfer")
+  // Receipt: chosen on this page before "I have paid" (fileRef), or added afterwards once the claim is in (lateFileRef).
   const fileRef = useRef<HTMLInputElement>(null)
+  const lateFileRef = useRef<HTMLInputElement>(null)
+  const [receipt, setReceipt] = useState<File | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [remaining, setRemaining] = useState<string | null>(null)
   const [allLines, setAllLines] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
 
   const payment = order?.payment
+  useEffect(() => {
+    if (!receipt || !receipt.type.startsWith("image/")) return setReceiptPreview(null)
+    const url = URL.createObjectURL(receipt)
+    setReceiptPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [receipt])
   useEffect(() => {
     if (!payment?.expiresAt || order?.status !== "pending_payment") return setRemaining(null)
     const tick = () => {
@@ -63,8 +75,17 @@ export default function OrderDetailPage() {
 
   const bank = methods?.bankAccounts ?? []
   const copy = (text: string) => navigator.clipboard.writeText(text).then(() => toast.success("Copied"))
-  const sendClaim = (receipt: File | null) =>
-    claimTransfer.mutate({ id: order.id, receipt }, { onSuccess: () => toast.success("Thanks — we'll confirm shortly"), onError: (err) => toast.error(err.message) })
+  /** Checks a picked file; returns it when it can be sent. */
+  const acceptReceipt = (file: File | undefined): File | null => {
+    if (!file) return null
+    if (file.size > MAX_RECEIPT_MB * 1024 * 1024) {
+      toast.error(`That file is too big. Please choose one under ${MAX_RECEIPT_MB} MB.`)
+      return null
+    }
+    return file
+  }
+  const sendClaim = (file: File, done: string) =>
+    claimTransfer.mutate({ id: order.id, receipt: file }, { onSuccess: () => { setReceipt(null); toast.success(done) }, onError: (err) => toast.error(err.message) })
   const hiddenLines = Math.max(0, order.lines.length - LINES_SHOWN_ON_PHONE)
   const showChat = !["cancelled", "refunded"].includes(order.status)
 
@@ -101,12 +122,26 @@ export default function OrderDetailPage() {
                     </div>
                   ))}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => sendClaim(e.target.files?.[0] ?? null)} data-cy="receipt-input" />
-                  <Button variant="accent" loading={claimTransfer.isPending} onClick={() => sendClaim(null)} data-cy="i-have-paid">I have paid</Button>
+                {/* Step 2: attach the transfer receipt. Step 3 ("I have paid") stays locked until one is attached. */}
+                <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = acceptReceipt(e.target.files?.[0]); if (f) setReceipt(f); e.target.value = "" }} data-cy="receipt-input" />
+                {receipt ? (
+                  <div className="flex items-center gap-3 rounded-lg border bg-muted/40 p-2" data-cy="receipt-chosen">
+                    {receiptPreview ? <img src={receiptPreview} alt="Your receipt" className="size-12 shrink-0 rounded-md object-cover" /> : <span className="grid size-12 shrink-0 place-items-center rounded-md bg-muted"><FileText className="size-5 text-muted-foreground" /></span>}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{receipt.name}</p>
+                      <p className="text-xs text-muted-foreground">{Math.max(1, Math.round(receipt.size / 1024))} KB</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()} disabled={claimTransfer.isPending} data-cy="change-receipt">Change</Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => setReceipt(null)} disabled={claimTransfer.isPending} aria-label="Remove receipt" data-cy="remove-receipt"><X /></Button>
+                  </div>
+                ) : (
                   <Button variant="outline" onClick={() => fileRef.current?.click()} data-cy="upload-receipt"><Upload /> Upload receipt</Button>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="accent" loading={claimTransfer.isPending} disabled={!receipt} onClick={() => receipt && sendClaim(receipt, "Thanks, we'll confirm shortly")} aria-describedby="receipt-hint" data-cy="i-have-paid">I have paid</Button>
                   <Button variant="ghost" className="text-destructive" onClick={() => setCancelOpen(true)} data-cy="cancel-order">Cancel order</Button>
                 </div>
+                {!receipt ? <p id="receipt-hint" className="text-xs text-muted-foreground" data-cy="receipt-hint">After you transfer, upload a screenshot or photo of your receipt, then tap “I have paid”.</p> : <span id="receipt-hint" className="sr-only">Receipt attached.</span>}
               </CardContent>
             </Card>
           ) : null}
@@ -123,7 +158,27 @@ export default function OrderDetailPage() {
             </Card>
           ) : null}
 
-          {order.status === "awaiting_confirmation" ? <p className="rounded-lg bg-info/10 p-3 text-sm" data-cy="awaiting-confirmation">We're checking your transfer. The kitchen starts as soon as it is confirmed.</p> : null}
+          {order.status === "awaiting_confirmation" ? (
+            <div className="space-y-2">
+              <p className="rounded-lg bg-info/10 p-3 text-sm" data-cy="awaiting-confirmation">We're checking your transfer. The kitchen starts as soon as it is confirmed.</p>
+              {/* Forgot the receipt? It can still be added (or replaced) while we're checking. */}
+              <input ref={lateFileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = acceptReceipt(e.target.files?.[0]); if (f) sendClaim(f, payment?.proofUrl ? "Receipt replaced" : "Thanks, we've added your receipt"); e.target.value = "" }} data-cy="late-receipt-input" />
+              {payment?.proofUrl ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border p-3 text-sm" data-cy="receipt-on-file">
+                  <span className="inline-flex items-center gap-1.5 font-medium text-success"><Check className="size-4" /> Receipt received</span>
+                  <a href={payment.proofUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline" data-cy="view-receipt">View</a>
+                  <Button variant="link" size="sm" className="h-auto p-0" loading={claimTransfer.isPending} onClick={() => lateFileRef.current?.click()} data-cy="replace-receipt">Replace</Button>
+                </div>
+              ) : (
+                <Card className="border-warning/50" data-cy="add-receipt">
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+                    <p>Add your transfer receipt so we can confirm your payment faster.</p>
+                    <Button variant="accent" loading={claimTransfer.isPending} onClick={() => lateFileRef.current?.click()} data-cy="add-receipt-button"><Upload /> Upload receipt</Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : null}
           {order.deliveryCode ? (
             <Card className="border-primary/40 bg-primary/5" data-cy="delivery-code">
               <CardContent className="space-y-2 p-4 text-center sm:p-5">

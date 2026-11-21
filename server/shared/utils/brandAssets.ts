@@ -1,6 +1,7 @@
 // Logo artwork shipped with the server (server/public/brand, served at /brand). Emails need an image at a public web
-// address; a logo uploaded in Admin → Settings (Cloudinary) always wins, and these cover restaurants that haven't
-// uploaded one yet. Keyed by restaurant slug, like the storefront's own extras on the client.
+// address. A restaurant listed here always uses this badge in emails (as the web app does with its own copy, keyed by the
+// same slug in the client's storefrontExtras); a logo uploaded in Admin → Settings (Cloudinary) is used for restaurants
+// that are not listed.
 import { env } from "../../config/env";
 
 interface BuiltInBrand {

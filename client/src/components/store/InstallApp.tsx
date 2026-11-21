@@ -12,7 +12,7 @@ function IosSteps({ open, onOpenChange }: { open: boolean; onOpenChange: (open: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-cy="install-help">
         <DialogHeader>
-          <DialogTitle>Add KIROS to your Home Screen</DialogTitle>
+          <DialogTitle>Add KIROS Foods to your Home Screen</DialogTitle>
           <DialogDescription>Apple only lets you do this from Safari.</DialogDescription>
         </DialogHeader>
         <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed">

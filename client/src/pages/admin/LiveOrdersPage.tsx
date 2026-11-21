@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
 import { useLiveOrderInvalidation, useOrderBoard, useOrderMutations } from "@/hooks/useAdminOrders"
 import { useAdminCurrency } from "@/hooks/useFormatters"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 import { BOARD_STATUSES, ORDER_STATUS_LABELS } from "@/lib/enums"
 import type { OrderStatus, OrderSummary } from "@/types/store.types"
 import { plural } from "@/lib/utils"
@@ -39,7 +39,7 @@ function nextStep(o: OrderSummary): { to: OrderStatus; label: string } | null {
 export default function LiveOrdersPage() {
   const fmt = useAdminCurrency()
   const { can } = useAuth()
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   useLiveOrderInvalidation()
   const { data, isLoading, error, refetch } = useOrderBoard(branchId || undefined)
   const { changeStatus } = useOrderMutations()

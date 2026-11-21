@@ -11,7 +11,7 @@ import { ChatPanel } from "@/components/store/ChatPanel"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/contexts/AuthContext"
 import { CHAT_KEY, useConversations } from "@/hooks/useAdminMisc"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 import { useSocketEvent } from "@/hooks/useSocketEvent"
 import { cn } from "@/lib/utils"
 import type { ConversationRow } from "@/types/admin.types"
@@ -19,7 +19,7 @@ import type { ConversationRow } from "@/types/admin.types"
 export default function ChatPage() {
   const { can } = useAuth()
   const qc = useQueryClient()
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [page, setPage] = useState(1)
   useEffect(() => setPage(1), [branchId, unreadOnly])

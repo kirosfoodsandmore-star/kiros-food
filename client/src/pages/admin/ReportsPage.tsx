@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { ReportEndpoints } from "@/endpoints/admin.endpoints"
 import { useSalesReport } from "@/hooks/useAdminMisc"
 import { useAdminCurrency } from "@/hooks/useFormatters"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 
 const GROUPS = [["day", "By day"], ["branch", "By branch"], ["menu", "By menu"], ["item", "By item"], ["option", "By option"]] as const
 type Grouping = (typeof GROUPS)[number][0]
@@ -23,7 +23,7 @@ type Grouping = (typeof GROUPS)[number][0]
 export default function ReportsPage() {
   const fmt = useAdminCurrency()
   const { can } = useAuth()
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   const [groupBy, setGroupBy] = useState<Grouping>("day")
   const [range, setRange] = useState({ from: "", to: "" })
   const params = { groupBy, branchId: branchId || undefined, from: range.from || undefined, to: range.to || undefined }

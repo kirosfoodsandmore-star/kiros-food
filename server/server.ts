@@ -8,6 +8,7 @@ import { attachSocketServer, closeSocketServer } from "./infrastructure/realtime
 import { startScheduler, stopScheduler } from "./infrastructure/scheduler/scheduler";
 import { EmailNotifierService } from "./modules/notification/services/emailNotifier.service";
 import { DeliveryNotifierService } from "./modules/push/services/deliveryNotifier.service";
+import { OrderNotifierService } from "./modules/push/services/orderNotifier.service";
 import { emailConfigured } from "./shared/utils/mailer";
 
 async function main(): Promise<void> {
@@ -17,6 +18,7 @@ async function main(): Promise<void> {
 
   EmailNotifierService.Instance.register();
   DeliveryNotifierService.Instance.register();
+  OrderNotifierService.Instance.register();
   console.log(emailConfigured() ? `[mail] email on (${env.email.provider === "script" ? "Apps Script relay" : "Gmail"})` : "[mail] email off — EMAIL_* not set");
   console.log(env.firebase.configured ? "[firebase] auth + Firestore on" : "[firebase] NOT configured — staff sign-in is unavailable (passwords live only in Firebase), chat off");
   console.log(env.firebase.configured ? "[push] FCM notifications on" : "[push] FCM notifications off — Firebase service account not set");

@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useBranches } from "@/hooks/useAdminBranches"
 import { useAvailability, useItems, useOptionGroups, useSetAvailability, useSetManyAvailability } from "@/hooks/useAdminMenu"
 import { useDebouncedSearch } from "@/hooks/useDebounce"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 
 type Target = { itemId?: string; optionId?: string }
 type Row = { id: string; name: string; sub: string; kind: "item" | "option" }
@@ -29,7 +29,7 @@ const MAX_BULK = 200 // matches the API limit
 export default function AvailabilityPage() {
   const { can, session } = useAuth()
   const { data: branches } = useBranches()
-  const [stored, setStored] = usePersistedState<string>("kiros.admin.branch", "")
+  const [stored, setStored] = useAdminBranch()
   const branchId = stored || session?.user.branchIds[0] || branches?.[0]?.id || ""
   const [tab, setTab] = useState<"items" | "options">("items")
   const [search, setSearch] = useState("")

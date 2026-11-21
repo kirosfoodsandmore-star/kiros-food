@@ -50,11 +50,12 @@ export class EmailNotifierService {
     private readonly paymentSettings = PaymentSettingsService.Instance
   ) {}
 
-  // The uploaded logo wins; restaurants without one fall back to the artwork the server ships for them (see brandAssets).
+  // Same rule as the web app's BrandLogo: a restaurant with its own artwork shipped in the server (see brandAssets) uses that
+  // badge everywhere, so emails match the app; any other restaurant uses the logo uploaded in Admin → Settings.
   private brandFor(org: { name: string; slug: string; email: string | null; logoUrl: string | null }): LayoutBrand {
-    if (org.logoUrl) return { businessName: org.name, footerEmail: org.email, logoUrl: org.logoUrl, logoKind: "wide" };
     const badge = builtInBadgeUrl(org.slug);
-    return { businessName: org.name, footerEmail: org.email, logoUrl: badge, logoKind: badge ? "badge" : undefined };
+    if (badge) return { businessName: org.name, footerEmail: org.email, logoUrl: badge, logoKind: "badge" };
+    return { businessName: org.name, footerEmail: org.email, logoUrl: org.logoUrl, logoKind: org.logoUrl ? "wide" : undefined };
   }
 
   private async ctx(organizationId: string): Promise<Ctx | null> {

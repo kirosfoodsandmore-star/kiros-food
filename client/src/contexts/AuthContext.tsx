@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react"
 import { AuthEndpoints } from "@/endpoints/auth.endpoints"
+import { ADMIN_BRANCH_KEY } from "@/lib/adminBranchKey"
 import { can as canCheck, canAny as canAnyCheck } from "@/lib/can"
 import { firebaseSignOut } from "@/lib/firebase"
 import { disablePush } from "@/lib/push"
@@ -67,6 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await Promise.race([disablePush(true), new Promise((r) => setTimeout(r, 3000))]).catch(() => undefined)
     if (refresh) void AuthEndpoints.logout(refresh)
     tokenStorage.clear("staff")
+    // The branch picked on the admin screens is a per-person choice; the next person to sign in here starts from "all".
+    try { localStorage.removeItem(ADMIN_BRANCH_KEY) } catch { /* private mode */ }
     disconnectSocket("staff")
     await firebaseSignOut()
     qc.setQueryData(SESSION_KEY, null)

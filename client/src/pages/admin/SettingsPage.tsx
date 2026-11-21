@@ -1,6 +1,6 @@
 // Restaurant settings: brand & notifications, payments (Owner), bank accounts, ownership transfer.
-import { ImagePlus, Plus, Trash2 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Plus, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { SimpleFormDialog, type FieldDef } from "@/components/admin/SimpleFormDialog"
 import { PageHeader } from "@/components/layout/PageHeader"
@@ -58,7 +58,6 @@ function BrandSettings() {
   const { data: r } = useRestaurantSettings()
   const m = useSettingsMutations()
   const { data: branches } = useBranches()
-  const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<BrandForm | null>(null)
   useEffect(() => {
     if (r) setForm({ name: r.name, slug: r.slug, tagline: r.tagline ?? "", phone: r.phone ?? "", email: r.email ?? "", address: r.address ?? "", currencyCode: r.currencyCode, currencySymbol: r.currencySymbol, currencyDecimals: r.currencyDecimals, timezone: r.timezone, orderPrefix: r.orderPrefix, notifyStaffNewOrders: r.notifyStaffNewOrders, notifyCustomersByEmail: r.notifyCustomersByEmail, defaultBranchId: r.defaultBranchId ?? AUTO_BRANCH, instagram: r.socialLinks?.instagram ?? "", facebook: r.socialLinks?.facebook ?? "", tiktok: r.socialLinks?.tiktok ?? "", whatsapp: r.socialLinks?.whatsapp ?? "" })
@@ -77,11 +76,6 @@ function BrandSettings() {
       <Card>
         <CardHeader><CardTitle>Brand</CardTitle><CardDescription>Shown on the storefront and in emails.</CardDescription></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center gap-3">
-            <button type="button" className="grid size-20 place-items-center overflow-hidden rounded-xl border bg-muted" disabled={!manage} onClick={() => fileRef.current?.click()} aria-label="Change logo" data-cy="logo-upload">{r.logoUrl ? <img src={r.logoUrl} alt="" className="size-full object-contain" /> : <ImagePlus className="text-muted-foreground" />}</button>
-            <div className="text-sm"><p className="font-medium">Logo</p><p className="text-muted-foreground">PNG or JPG, up to 3 MB.</p>{r.logoUrl && manage ? <Button variant="link" size="sm" className="h-auto p-0 text-destructive" onClick={() => m.removeLogo.mutate(undefined)}>Remove</Button> : null}</div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) m.uploadLogo.mutate(file, { onSuccess: () => toast.success("Logo updated"), onError: (err) => toast.error(err.message) }); e.target.value = "" }} />
-          </div>
           <Field label="Restaurant name"><Input {...text("name")} data-cy="settings-name" /></Field>
           <Field label="Storefront address" hint={`Customers open /${form.slug}`}><Input {...text("slug")} data-cy="settings-slug" /></Field>
           <Field label="Tagline"><Input {...text("tagline")} /></Field>

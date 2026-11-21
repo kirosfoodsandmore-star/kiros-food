@@ -11,10 +11,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuditLog } from "@/hooks/useAdminMisc"
 import { useDebouncedSearch } from "@/hooks/useDebounce"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 
 export default function AuditLogPage() {
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   const [search, setSearch] = useState("")
   const [range, setRange] = useState({ from: "", to: "" })
   const [page, setPage] = useState(1)

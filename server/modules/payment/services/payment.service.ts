@@ -101,7 +101,11 @@ export class PaymentService {
 
   // ── Bank transfer ──────────────────────────────────────────────────────────
 
-  /** Customer says "I have paid", optionally with a receipt. Order → Awaiting confirmation. */
+  /**
+   * Customer says "I have paid" and sends the transfer receipt. Order → Awaiting confirmation.
+   * The first claim needs a receipt. While the order still awaits confirmation the customer can call this again to add
+   * (or replace) the receipt, which keeps the original claim time and note.
+   */
   async claimTransfer(customer: CustomerActor, orderId: string, receipt: { buffer: Buffer; mimetype: string } | null, note: string | null) {
     const order = await this.orders.findById(customer.organizationId, orderId);
     if (!order || order.customerId !== customer.id) throw AppError.notFound("Order not found");
@@ -109,12 +113,14 @@ export class PaymentService {
     if (!payment || payment.method !== "transfer") throw AppError.badRequest("This order is not a bank-transfer order");
     if (payment.status !== "pending" && payment.status !== "claimed") throw AppError.conflict("This payment can no longer be claimed");
     if (order.status !== "pending_payment" && order.status !== "awaiting_confirmation") throw AppError.conflict("This order is no longer awaiting payment");
+    if (!receipt && !payment.proofUrl) throw AppError.badRequest("Please upload your transfer receipt, then tap I have paid");
     let proof: { url: string; publicId: string } | null = null;
     if (receipt) {
       const uploaded = await this.storage.replace(receipt.buffer, { folder: STORAGE_FOLDERS.receipt, kind: receipt.mimetype === "application/pdf" ? "document" : "image" }, payment.proofPublicId);
       proof = { url: uploaded.url, publicId: uploaded.publicId };
     }
-    await this.payments.update(payment.id, { status: "claimed", claimedAt: new Date(), claimNote: note, ...(proof ? { proofUrl: proof.url, proofPublicId: proof.publicId } : {}) });
+    // A repeat call (adding the receipt afterwards) keeps when the customer first said they paid, and the note they left.
+    await this.payments.update(payment.id, { status: "claimed", claimedAt: payment.claimedAt ?? new Date(), claimNote: note ?? payment.claimNote, ...(proof ? { proofUrl: proof.url, proofPublicId: proof.publicId } : {}) });
     if (order.status === "pending_payment") {
       // The transfer window still bounds how long the claim can sit unconfirmed (+24h grace, see scheduler).
       await this.orderService.transition(customer.organizationId, order.id, "awaiting_confirmation", { type: "customer", id: customer.id, name: customer.name }, note);

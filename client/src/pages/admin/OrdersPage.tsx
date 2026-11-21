@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAdminOrders, useLiveOrderInvalidation } from "@/hooks/useAdminOrders"
 import { useDebouncedSearch } from "@/hooks/useDebounce"
 import { useAdminCurrency } from "@/hooks/useFormatters"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 import { usePersistedState } from "@/hooks/usePersistedState"
 import { ORDER_STATUS_LABELS } from "@/lib/enums"
 import type { OrderStatus } from "@/types/store.types"
@@ -22,7 +23,7 @@ import type { OrderStatus } from "@/types/store.types"
 export default function OrdersPage() {
   const fmt = useAdminCurrency()
   useLiveOrderInvalidation()
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   const [status, setStatus] = usePersistedState<string>("kiros.admin.orders.status", "")
   const [range, setRange] = useState({ from: "", to: "" })
   const [search, setSearch] = useState("")

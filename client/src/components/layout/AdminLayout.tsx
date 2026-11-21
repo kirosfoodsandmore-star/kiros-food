@@ -16,7 +16,7 @@ import { useLiveOrderInvalidation } from "@/hooks/useAdminOrders"
 import { useDeliveryAlerts } from "@/hooks/useDeliveryAlerts"
 import { usePersistedState } from "@/hooks/usePersistedState"
 import { useSocketEvent } from "@/hooks/useSocketEvent"
-import { playChime } from "@/lib/chime"
+import { armChime, playChime } from "@/lib/chime"
 import { refreshPush } from "@/lib/push"
 import { connectSocket } from "@/lib/socket"
 import { initials } from "@/lib/utils"
@@ -37,10 +37,16 @@ export default function AdminLayout({ portal = "admin" }: { portal?: "admin" | "
   const handlesOrders = canAny("orders.update_status", "orders.reject", "payments.confirm")
   const handlesOrdersRef = useRef(handlesOrders)
   handlesOrdersRef.current = handlesOrders
+  // A customer saying they've paid by transfer is the first sign of that order, and only those who can confirm it need the alert.
+  const confirmsPayments = canAny("payments.confirm")
+  const confirmsPaymentsRef = useRef(confirmsPayments)
+  confirmsPaymentsRef.current = confirmsPayments
 
   useEffect(() => {
     connectSocket("staff")
   }, [])
+  // Browsers keep audio locked until the first tap or key press; unlock it so an alert that arrives later can sound.
+  useEffect(() => armChime(), [])
   // Notifications already allowed on this device: keep the server's copy of the token current for whoever is signed in.
   useEffect(() => {
     void refreshPush()
@@ -69,6 +75,12 @@ export default function AdminLayout({ portal = "admin" }: { portal?: "admin" | "
     toast.success(`New order ${o.number} · ${o.branchName}`, { action: { label: "Open", onClick: () => navigate(`/admin/orders/${o.id}`) } })
   }, [navigate])
   useSocketEvent<OrderSummary>("staff", "order:new", onNewOrder)
+  const onPaymentClaimed = useCallback((o: OrderSummary) => {
+    if (!confirmsPaymentsRef.current) return
+    if (soundRef.current) playChime()
+    toast.info(`Payment to confirm · ${o.number}`, { description: o.branchName, duration: 15_000, action: { label: "Open", onClick: () => navigate(`/admin/orders/${o.id}`) } })
+  }, [navigate])
+  useSocketEvent<OrderSummary>("staff", "payment:claimed", onPaymentClaimed)
   // A delivery handed to this person (a rider, or a manager who also rides): the server tells them alone.
   useDeliveryAlerts(sound, rider ? "/rider" : "/admin/deliveries")
   // The sidebar's order count has to move on every page, not only the ones that list orders.

@@ -38,12 +38,13 @@ export function emailLayout(body: string, brand: LayoutBrand): string {
   const year = new Date().getFullYear();
   const name = `<span style="font-size:20px;font-weight:700;color:#ffffff">${esc(brand.businessName)}</span>`;
   const powered = `<span style="display:block;font-size:11px;color:${C.accent};margin-top:2px;letter-spacing:0.04em">Powered by Kiros</span>`;
-  // A badge sits beside the name (it carries its own white disc); a wide logo sits above it.
+  // A badge sits beside the name (it carries its own white disc); a wide logo sits above it. The masthead is dark navy
+  // and uploaded logos are usually dark (and often transparent), so a wide logo always sits on a white tile.
   const masthead = !brand.logoUrl
     ? `${name}${powered}`
     : brand.logoKind === "badge"
       ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-right:12px;vertical-align:middle"><img src="${esc(brand.logoUrl)}" alt="" width="44" height="44" style="display:block;width:44px;height:44px"></td><td style="vertical-align:middle">${name}${powered}</td></tr></table>`
-      : `<img src="${esc(brand.logoUrl)}" alt="${esc(brand.businessName)}" height="36" style="display:block;height:36px;max-width:160px;object-fit:contain;margin-bottom:6px">${name}${powered}`;
+      : `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px"><tr><td style="background:#ffffff;border-radius:10px;padding:8px 14px"><img src="${esc(brand.logoUrl)}" alt="${esc(brand.businessName)}" height="36" style="display:block;height:36px;max-width:160px;object-fit:contain"></td></tr></table>${name}${powered}`;
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:${C.surface};font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">

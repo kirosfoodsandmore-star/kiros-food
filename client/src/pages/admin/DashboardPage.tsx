@@ -9,17 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
 import { useDashboard } from "@/hooks/useAdminMisc"
 import { useAdminCurrency } from "@/hooks/useFormatters"
-import { usePersistedState } from "@/hooks/usePersistedState"
+import { useAdminBranch } from "@/hooks/useAdminBranch"
 import { ORDER_STATUS_LABELS } from "@/lib/enums"
 import type { OrderStatus } from "@/types/store.types"
 
 export default function DashboardPage() {
   const fmt = useAdminCurrency()
   const { can } = useAuth()
-  const [branchId, setBranchId] = usePersistedState<string>("kiros.admin.branch", "")
+  const [branchId, setBranchId] = useAdminBranch()
   const { data, isLoading, error, refetch } = useDashboard(branchId || undefined)
   if (isLoading) return <PageLoader />
-  if (error || !data) return <ErrorState message="Dashboard could not be loaded." onRetry={() => void refetch()} />
+  if (error || !data) return <ErrorState message={`Dashboard could not be loaded.${error instanceof Error && error.message ? ` ${error.message}` : ""}`} onRetry={() => void refetch()} />
   // Order counts are for everyone with the dashboard; money needs the sales-report permission (the server leaves it out otherwise).
   const { today, last30Days } = data
   const tiles = [
