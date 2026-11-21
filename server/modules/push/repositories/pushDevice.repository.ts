@@ -23,10 +23,10 @@ export class PushDeviceRepository {
     await db().query(`DELETE FROM push_devices WHERE token = ANY($1::text[])`, [tokens]);
   }
 
-  async tokensForUsers(userIds: string[]): Promise<string[]> {
+  /** Each device with the staff member it belongs to, so a send can report who it reached. */
+  async devicesForUsers(userIds: string[]): Promise<Array<{ owner: string; token: string }>> {
     if (userIds.length === 0) return [];
-    const rows: Array<{ token: string }> = await db().query(`SELECT token FROM push_devices WHERE user_id = ANY($1::uuid[])`, [userIds]);
-    return rows.map((r) => r.token);
+    return db().query(`SELECT user_id AS owner, token FROM push_devices WHERE user_id = ANY($1::uuid[])`, [userIds]);
   }
 
   async countForUser(userId: string): Promise<number> {

@@ -2,9 +2,14 @@
 // device (client/public/push-sw.js) decides how to show them and skips showing one while the app is open on screen,
 // because the in-app alert already covers that. Without a Firebase service account everything here is a quiet no-op.
 // Staff devices live in push_devices, customers' in customer_push_devices; sending works the same for both.
+//
+// A send reports who it REACHED: people for whom FCM accepted the message on at least one device. A caller can pass that on
+// with publishOutcome(key, reached), and anything that would repeat the alert another way (the new-order email) can ask
+// reachedForEmailSkip(key) to learn who already has it. See PlatformSettings.skipEmailWhenPushDelivered.
 import { getMessaging } from "firebase-admin/messaging";
 import { firebaseConfigured, getFirebaseApp } from "../../../infrastructure/firebase/firebaseAdmin";
 import type { Actor, CustomerActor } from "../../../shared/types/actor";
+import { PlatformSettingsService } from "../../platform/services/platformSettings.service";
 import { CustomerPushDeviceRepository } from "../repositories/customerPushDevice.repository";
 import { PushDeviceRepository } from "../repositories/pushDevice.repository";
 
@@ -19,11 +24,31 @@ export interface PushMessage {
   icon?: string;
 }
 
+/** The key under which the new-order push publishes who it reached (the new-order email asks for the same key). */
+export const newOrderPushKey = (orderId: string): string => `order-${orderId}`;
+
 const STALE_TOKEN_CODES = new Set(["messaging/registration-token-not-registered", "messaging/invalid-registration-token", "messaging/invalid-argument"]);
 const BATCH = 500;
+/** How long an answer stays available, and the longest the email waits for the push to finish before it just goes out. */
+const OUTCOME_KEEP_MS = 5 * 60_000;
+const OUTCOME_WAIT_MS = 15_000;
+
+interface Device {
+  owner: string;
+  token: string;
+}
+interface SendResult {
+  ok: boolean;
+  code?: string;
+}
+interface Outcome {
+  promise: Promise<Set<string>>;
+  resolve: (reached: Set<string>) => void;
+}
 
 export class PushService {
   static Instance = new PushService();
+  private readonly outcomes = new Map<string, Outcome>();
   private constructor(
     private readonly devices = PushDeviceRepository.Instance,
     private readonly customerDevices = CustomerPushDeviceRepository.Instance
@@ -53,40 +78,86 @@ export class PushService {
     await this.customerDevices.remove(customer.id, token);
   }
 
-  /** Never throws: a failed notification must not break the order flow that triggered it. */
-  async sendToUsers(userIds: string[], message: PushMessage): Promise<void> {
-    if (!this.enabled || userIds.length === 0) return;
+  /** Never throws: a failed notification must not break the order flow that triggered it. Returns the staff it reached. */
+  async sendToUsers(userIds: string[], message: PushMessage): Promise<Set<string>> {
+    if (!this.enabled || userIds.length === 0) return new Set();
     const ids = [...new Set(userIds)];
-    await this.deliver(() => this.devices.tokensForUsers(ids), (stale) => this.devices.removeTokens(stale), message);
+    return this.deliver(() => this.devices.devicesForUsers(ids), (stale) => this.devices.removeTokens(stale), message);
   }
 
-  /** Same, for customers (their devices are kept separately). Never throws. */
-  async sendToCustomers(customerIds: string[], message: PushMessage): Promise<void> {
-    if (!this.enabled || customerIds.length === 0) return;
+  /** Same, for customers (their devices are kept separately). Never throws. Returns the customers it reached. */
+  async sendToCustomers(customerIds: string[], message: PushMessage): Promise<Set<string>> {
+    if (!this.enabled || customerIds.length === 0) return new Set();
     const ids = [...new Set(customerIds)];
-    await this.deliver(() => this.customerDevices.tokensForCustomers(ids), (stale) => this.customerDevices.removeTokens(stale), message);
+    return this.deliver(() => this.customerDevices.devicesForCustomers(ids), (stale) => this.customerDevices.removeTokens(stale), message);
   }
 
-  private async deliver(findTokens: () => Promise<string[]>, removeStale: (tokens: string[]) => Promise<void>, message: PushMessage): Promise<void> {
+  /** The one place FCM is called (kept apart so tests can stand in for Google). */
+  private async sendBatch(tokens: string[], message: PushMessage): Promise<SendResult[]> {
+    const res = await getMessaging(getFirebaseApp()).sendEachForMulticast({
+      tokens,
+      data: { title: message.title, body: message.body, url: message.url, tag: message.tag ?? "", ...(message.icon ? { icon: message.icon } : {}) },
+      // High urgency wakes a sleeping phone; one hour is plenty, an old "new delivery" is worse than none.
+      webpush: { headers: { Urgency: "high", TTL: "3600" } },
+    });
+    return res.responses.map((r) => ({ ok: r.success, code: r.error?.code ?? r.error?.message }));
+  }
+
+  private async deliver(findDevices: () => Promise<Device[]>, removeStale: (tokens: string[]) => Promise<void>, message: PushMessage): Promise<Set<string>> {
+    const reached = new Set<string>();
     try {
-      const tokens = [...new Set(await findTokens())];
+      const seen = new Set<string>();
+      const devices = (await findDevices()).filter((d) => !seen.has(d.token) && !!seen.add(d.token));
       const stale: string[] = [];
-      for (let i = 0; i < tokens.length; i += BATCH) {
-        const chunk = tokens.slice(i, i + BATCH);
-        const res = await getMessaging(getFirebaseApp()).sendEachForMulticast({
-          tokens: chunk,
-          data: { title: message.title, body: message.body, url: message.url, tag: message.tag ?? "", ...(message.icon ? { icon: message.icon } : {}) },
-          // High urgency wakes a sleeping phone; one hour is plenty, an old "new delivery" is worse than none.
-          webpush: { headers: { Urgency: "high", TTL: "3600" } },
-        });
-        res.responses.forEach((r, idx) => {
-          if (!r.success && r.error && STALE_TOKEN_CODES.has(r.error.code)) stale.push(chunk[idx]);
-          else if (!r.success) console.warn("[push] send failed:", r.error?.code ?? r.error?.message);
+      for (let i = 0; i < devices.length; i += BATCH) {
+        const chunk = devices.slice(i, i + BATCH);
+        const results = await this.sendBatch(chunk.map((d) => d.token), message);
+        results.forEach((r, idx) => {
+          if (r.ok) reached.add(chunk[idx].owner);
+          else if (r.code && STALE_TOKEN_CODES.has(r.code)) stale.push(chunk[idx].token);
+          else console.warn("[push] send failed:", r.code);
         });
       }
       await removeStale(stale);
     } catch (err) {
       console.error("[push] could not send", err instanceof Error ? err.message : err);
+    }
+    return reached;
+  }
+
+  // ── Who a push reached, for the email that would repeat it ──────────────────
+
+  private outcome(key: string): Outcome {
+    let o = this.outcomes.get(key);
+    if (!o) {
+      let resolve!: (reached: Set<string>) => void;
+      const promise = new Promise<Set<string>>((r) => { resolve = r; });
+      o = { promise, resolve };
+      this.outcomes.set(key, o);
+      setTimeout(() => this.outcomes.delete(key), OUTCOME_KEEP_MS).unref();
+    }
+    return o;
+  }
+
+  /** Say who the push for `key` reached (an empty set when nothing was sent). The first answer counts. */
+  publishOutcome(key: string, reached: Set<string>): void {
+    this.outcome(key).resolve(reached);
+  }
+
+  /**
+   * The people an email can leave out because the push already reached them. Empty (so everyone is emailed) unless push is
+   * set up AND a platform admin switched "skip the email when the push was delivered" on. Waits (briefly) for the push to
+   * finish; if it doesn't, everyone is emailed: a repeated alert is better than a missing one.
+   */
+  async reachedForEmailSkip(key: string): Promise<Set<string>> {
+    if (!this.enabled) return new Set();
+    if (!(await PlatformSettingsService.Instance.get()).skipEmailWhenPushDelivered) return new Set();
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<Set<string>>((r) => { timer = setTimeout(() => r(new Set()), OUTCOME_WAIT_MS); });
+    try {
+      return await Promise.race([this.outcome(key).promise, timeout]);
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

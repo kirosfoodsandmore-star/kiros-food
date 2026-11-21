@@ -405,6 +405,32 @@ export interface PlatformRestaurant {
   createdAt: string
 }
 
+export type EmailStatus = "sent" | "failed" | "skipped"
+
+/** One recipient of one email, as the platform admins see it in the email log. Never includes the message text. */
+export interface EmailLogRow {
+  id: string
+  createdAt: string
+  organizationId: string | null
+  restaurantName: string | null
+  to: string
+  subject: string
+  kind: string | null
+  status: EmailStatus
+  /** How it went out: "gmail" or "apps_script"; null when nothing was sent. */
+  provider: string | null
+  /** The error for a failed email, or why it was skipped or went another way. */
+  note: string | null
+}
+
+export type EmailLogSummary = Record<EmailStatus, number>
+
+/** Switches the platform admins control (Platform → Notification settings). */
+export interface PlatformSettings {
+  /** New-order alerts reach staff by push and by email; when on, staff the push reached are not emailed the same alert. */
+  skipEmailWhenPushDelivered: boolean
+}
+
 export interface PlatformOverview {
   restaurants: number
   newThisWeek: number

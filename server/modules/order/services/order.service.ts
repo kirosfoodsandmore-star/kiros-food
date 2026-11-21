@@ -196,12 +196,13 @@ export class OrderService {
   /**
    * Proof of receipt. A delivery that carries a code can only be finished by someone who has it: the rider types in what
    * the customer reads out. A manager (who can change any status) may finish it without the code, and that is written
-   * into the order's history. Returns the note to record, or null when no code was involved.
+   * into the order's history. The rider carrying the order never may, whatever else their role allows: skipping the
+   * code is exactly what it exists to prevent. Returns the note to record, or null when no code was involved.
    */
   private async checkDeliveryCode(actor: Actor, order: Order, code: string | null): Promise<string | null> {
     if (order.fulfilment !== "delivery" || !order.deliveryCode) return null;
     if (!code) {
-      if (!can(actor, "orders.update_status")) throw AppError.badRequest("Ask the customer for their delivery code to mark this delivered");
+      if (!can(actor, "orders.update_status") || order.riderId === actor.id) throw AppError.badRequest("Ask the customer for their delivery code to mark this delivered");
       return "Marked delivered by staff without the customer's code";
     }
     if (order.deliveryCodeAttempts >= MAX_CODE_ATTEMPTS) throw AppError.conflict("Too many wrong codes. Ask the customer to check their order page, or ask the restaurant to complete it.");

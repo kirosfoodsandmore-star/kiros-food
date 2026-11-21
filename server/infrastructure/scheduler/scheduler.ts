@@ -4,6 +4,7 @@ import { env } from "../../config/env";
 import { RefreshTokenRepository } from "../../modules/auth/repositories/refreshToken.repository";
 import { AvailabilityService } from "../../modules/availability/services/availability.service";
 import { CartService } from "../../modules/cart/services/cart.service";
+import { EmailLogService } from "../../modules/notification/services/emailLog.service";
 import { OrderService } from "../../modules/order/services/order.service";
 import { PaymentService } from "../../modules/payment/services/payment.service";
 
@@ -35,6 +36,7 @@ async function tick(): Promise<void> {
     const restored = await AvailabilityService.Instance.restoreDue();
     const carts = await CartService.Instance.purgeExpired();
     await RefreshTokenRepository.Instance.purgeExpired();
+    await EmailLogService.Instance.purgeOld(); // never throws; keeps the email log to its retention window
     if (expiredPayments || expiredOrders || restored || carts) {
       console.info(`[scheduler] payments expired ${expiredPayments}, orders expired ${expiredOrders}, items restored ${restored}, carts purged ${carts}`);
     }

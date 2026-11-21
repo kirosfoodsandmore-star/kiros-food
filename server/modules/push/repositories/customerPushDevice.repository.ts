@@ -23,9 +23,9 @@ export class CustomerPushDeviceRepository {
     await db().query(`DELETE FROM customer_push_devices WHERE token = ANY($1::text[])`, [tokens]);
   }
 
-  async tokensForCustomers(customerIds: string[]): Promise<string[]> {
+  /** Each device with the customer it belongs to, so a send can report who it reached. */
+  async devicesForCustomers(customerIds: string[]): Promise<Array<{ owner: string; token: string }>> {
     if (customerIds.length === 0) return [];
-    const rows: Array<{ token: string }> = await db().query(`SELECT token FROM customer_push_devices WHERE customer_id = ANY($1::uuid[])`, [customerIds]);
-    return rows.map((r) => r.token);
+    return db().query(`SELECT customer_id AS owner, token FROM customer_push_devices WHERE customer_id = ANY($1::uuid[])`, [customerIds]);
   }
 }

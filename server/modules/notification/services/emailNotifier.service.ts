@@ -10,6 +10,7 @@ import { customerSignInCodeEmail } from "../../../shared/utils/mail/customer.mai
 import { newOrderStaffEmail, orderPlacedEmail, orderStatusEmail, paymentRejectedEmail, transferInstructionsEmail, type OrderMailSummary } from "../../../shared/utils/mail/order.mail";
 import { builtInBadgeUrl } from "../../../shared/utils/brandAssets";
 import { sendMail, type ComposedMail, type LayoutBrand } from "../../../shared/utils/mailer";
+import type { MailKind } from "./emailLog.service";
 import { formatDateTime } from "../../../shared/utils/dates";
 import { formatMoney } from "../../../shared/utils/money";
 import { BranchRepository } from "../../branch/repositories/branch.repository";
@@ -18,6 +19,7 @@ import { OrderService } from "../../order/services/order.service";
 import { OrganizationRepository } from "../../organization/repositories/organization.repository";
 import { PaymentRepository } from "../../payment/repositories/payment.repository";
 import { PaymentSettingsService } from "../../payment/services/paymentSettings.service";
+import { newOrderPushKey, PushService } from "../../push/services/push.service";
 import { RoleRepository } from "../../access/repositories/role.repository";
 import { StaffInviteRepository } from "../../user/repositories/staffInvite.repository";
 import { UserRepository } from "../../user/repositories/user.repository";
@@ -27,6 +29,7 @@ interface Ctx {
   timezone: string;
   symbol: string;
   decimals: number;
+  organizationId: string;
   replyTo: string | null;
   notifyStaff: boolean;
   notifyCustomers: boolean;
@@ -62,6 +65,7 @@ export class EmailNotifierService {
     const org = await this.organizations.findById(organizationId);
     if (!org) return null;
     return {
+      organizationId: org.id,
       brand: this.brandFor(org),
       timezone: org.timezone,
       symbol: org.currencySymbol,
@@ -73,8 +77,8 @@ export class EmailNotifierService {
     };
   }
 
-  private send(ctx: Ctx, to: string, mail: ComposedMail): Promise<boolean> {
-    return sendMail({ to, ...mail, fromName: ctx.brand.businessName, replyTo: ctx.replyTo });
+  private send(ctx: Ctx, to: string, mail: ComposedMail, kind: MailKind): Promise<boolean> {
+    return sendMail({ to, ...mail, fromName: ctx.brand.businessName, replyTo: ctx.replyTo, organizationId: ctx.organizationId, kind });
   }
 
   register(): void {
@@ -98,14 +102,14 @@ export class EmailNotifierService {
   async contactMessage(organizationId: string, msg: { name: string; email: string; phone: string | null; message: string }): Promise<boolean> {
     const ctx = await this.ctx(organizationId);
     if (!ctx?.replyTo) return false;
-    return sendMail({ to: ctx.replyTo, ...contactMessageEmail({ brand: ctx.brand, ...msg }), fromName: ctx.brand.businessName, replyTo: msg.email });
+    return sendMail({ to: ctx.replyTo, ...contactMessageEmail({ brand: ctx.brand, ...msg }), fromName: ctx.brand.businessName, replyTo: msg.email, organizationId: ctx.organizationId, kind: "contact_message" });
   }
 
   /** The optional customer sign-in code. Returns whether it was handed to the mail provider. */
   async customerSignInCode(organizationId: string, email: string, code: string, minutes: number): Promise<boolean> {
     const ctx = await this.ctx(organizationId);
     if (!ctx) return false;
-    return sendMail({ to: email, ...customerSignInCodeEmail({ brand: ctx.brand, code, minutes }), fromName: ctx.brand.businessName, replyTo: ctx.replyTo });
+    return sendMail({ to: email, ...customerSignInCodeEmail({ brand: ctx.brand, code, minutes }), fromName: ctx.brand.businessName, replyTo: ctx.replyTo, organizationId: ctx.organizationId, kind: "sign_in_code" });
   }
 
   // ── Staff ──────────────────────────────────────────────────────────────────
@@ -113,7 +117,7 @@ export class EmailNotifierService {
   private async welcome(organizationId: string, userId: string): Promise<void> {
     const [ctx, user] = await Promise.all([this.ctx(organizationId), this.users.findById(organizationId, userId)]);
     if (!ctx || !user) return;
-    await this.send(ctx, user.email, restaurantWelcomeEmail({ brand: ctx.brand, ownerName: user.name, adminUrl: env.adminUrl, storefrontUrl: `${env.storefrontUrl}/${ctx.slug}` }));
+    await this.send(ctx, user.email, restaurantWelcomeEmail({ brand: ctx.brand, ownerName: user.name, adminUrl: env.adminUrl, storefrontUrl: `${env.storefrontUrl}/${ctx.slug}` }), "welcome");
   }
 
   private async invite(organizationId: string, inviteId: string, token: string): Promise<void> {
@@ -125,7 +129,8 @@ export class EmailNotifierService {
     await this.send(
       ctx,
       invite.email,
-      staffInviteEmail({ brand: ctx.brand, name: invite.name, inviterName: inviter?.name ?? "The owner", roleName: role?.name ?? "Staff", branches, acceptUrl: `${env.adminUrl}/accept-invite?token=${encodeURIComponent(token)}`, hours: env.inviteTtlHours })
+      staffInviteEmail({ brand: ctx.brand, name: invite.name, inviterName: inviter?.name ?? "The owner", roleName: role?.name ?? "Staff", branches, acceptUrl: `${env.adminUrl}/accept-invite?token=${encodeURIComponent(token)}`, hours: env.inviteTtlHours }),
+      "staff_invite"
     );
   }
 
@@ -133,19 +138,19 @@ export class EmailNotifierService {
     const ctx = await this.ctx(organizationId);
     const contact = await this.users.findActor(userId);
     if (!ctx || !contact) return;
-    await this.send(ctx, contact.email, accountDeactivatedEmail({ brand: ctx.brand, name: contact.name }));
+    await this.send(ctx, contact.email, accountDeactivatedEmail({ brand: ctx.brand, name: contact.name }), "access_removed");
   }
 
   private async passwordResetCode(organizationId: string, userId: string, code: string): Promise<void> {
     const [ctx, user] = await Promise.all([this.ctx(organizationId), this.users.findById(organizationId, userId)]);
     if (!ctx || !user) return;
-    await this.send(ctx, user.email, passwordResetCodeEmail({ brand: ctx.brand, name: user.name, code, minutes: env.otpTtlMinutes }));
+    await this.send(ctx, user.email, passwordResetCodeEmail({ brand: ctx.brand, name: user.name, code, minutes: env.otpTtlMinutes }), "password_reset");
   }
 
   private async passwordChanged(organizationId: string, userId: string): Promise<void> {
     const [ctx, user] = await Promise.all([this.ctx(organizationId), this.users.findById(organizationId, userId)]);
     if (!ctx || !user) return;
-    await this.send(ctx, user.email, passwordChangedEmail({ brand: ctx.brand, name: user.name, when: formatDateTime(new Date(), ctx.timezone) }));
+    await this.send(ctx, user.email, passwordChangedEmail({ brand: ctx.brand, name: user.name, when: formatDateTime(new Date(), ctx.timezone) }), "password_changed");
   }
 
   // ── Orders ─────────────────────────────────────────────────────────────────
@@ -186,7 +191,7 @@ export class EmailNotifierService {
     const payment = await this.payments.latestForOrder(orderId);
     if (!data || !bank) return;
     const terms = await this.paymentSettings.transferTerms(organizationId);
-    await this.send(ctx, order.customerEmail, transferInstructionsEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s, bank, deadline: payment?.expiresAt ? formatDateTime(payment.expiresAt, ctx.timezone) : "soon", instructions: terms.instructions }));
+    await this.send(ctx, order.customerEmail, transferInstructionsEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s, bank, deadline: payment?.expiresAt ? formatDateTime(payment.expiresAt, ctx.timezone) : "soon", instructions: terms.instructions }), "transfer_instructions");
   }
 
   private async orderPaid(organizationId: string, orderId: string): Promise<void> {
@@ -194,10 +199,14 @@ export class EmailNotifierService {
     if (!ctx) return;
     const data = await this.summary(ctx, organizationId, orderId);
     if (!data) return;
-    if (ctx.notifyCustomers && data.customerEmail) await this.send(ctx, data.customerEmail, orderPlacedEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s }));
+    if (ctx.notifyCustomers && data.customerEmail) await this.send(ctx, data.customerEmail, orderPlacedEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s }), "order_received");
     if (ctx.notifyStaff) {
-      for (const staff of await this.users.recipientsWithPermission(organizationId, "orders.view", data.branchId)) {
-        await this.send(ctx, staff.email, newOrderStaffEmail({ brand: ctx.brand, staffName: staff.name, order: data.s, customerPhone: data.customerPhone, adminUrl: `${env.adminUrl}/orders/${orderId}` }));
+      const recipients = await this.users.recipientsWithPermission(organizationId, "orders.view", data.branchId);
+      // The same alert also goes out as a push. If a platform admin chose "skip the email when the push was delivered",
+      // staff the push reached are left out; everyone else (no device set up, or the push failed) is emailed as before.
+      const alreadyPushed = await PushService.Instance.reachedForEmailSkip(newOrderPushKey(orderId));
+      for (const staff of recipients.filter((s) => !alreadyPushed.has(s.id))) {
+        await this.send(ctx, staff.email, newOrderStaffEmail({ brand: ctx.brand, staffName: staff.name, order: data.s, customerPhone: data.customerPhone, adminUrl: `${env.adminUrl}/orders/${orderId}` }), "new_order_staff");
       }
     }
   }
@@ -209,7 +218,7 @@ export class EmailNotifierService {
     const data = await this.summary(ctx, organizationId, orderId);
     if (!data || !data.customerEmail) return;
     const deliveryCode = to === "out_for_delivery" ? await this.orderService.deliveryCodeFor(organizationId, orderId) : null;
-    await this.send(ctx, data.customerEmail, orderStatusEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s, status: to, note, deliveryCode }));
+    await this.send(ctx, data.customerEmail, orderStatusEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s, status: to, note, deliveryCode }), "order_status");
   }
 
   private async paymentRejected(organizationId: string, orderId: string, reason: string): Promise<void> {
@@ -217,6 +226,6 @@ export class EmailNotifierService {
     if (!ctx || !ctx.notifyCustomers) return;
     const data = await this.summary(ctx, organizationId, orderId);
     if (!data || !data.customerEmail) return;
-    await this.send(ctx, data.customerEmail, paymentRejectedEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s, reason }));
+    await this.send(ctx, data.customerEmail, paymentRejectedEmail({ brand: ctx.brand, customerName: data.customerName, order: data.s, reason }), "payment_rejected");
   }
 }

@@ -21,6 +21,15 @@ export interface OutgoingMail {
   attachments?: MailAttachment[];
 }
 
+/** What became of a message handed to the transport. `sent` means the provider accepted it, not that it reached an inbox. */
+export interface MailResult {
+  sent: boolean;
+  /** How it went out; null when nothing was sent. */
+  provider: "gmail" | "apps_script" | null;
+  /** Anything worth a human knowing: why nothing was sent, or that the relay failed and Gmail took over. */
+  note?: string;
+}
+
 let transporter: Transporter | null = null;
 
 function smtp(): Transporter {
@@ -98,25 +107,32 @@ export const mailTransport = {
     return env.email.enabled && env.email.configured;
   },
 
-  async send(mail: OutgoingMail): Promise<void> {
+  /** Throws when the provider refuses the message; otherwise says what happened (for the email log). */
+  async send(mail: OutgoingMail): Promise<MailResult> {
     if (!this.configured()) {
       console.info(`[mail] not configured — skipped "${mail.subject}"`);
-      return;
+      return { sent: false, provider: null, note: "Email is not configured on the server" };
     }
     if (env.email.provider === "script") {
       try {
         await viaScript(mail);
-        return;
+        return { sent: true, provider: "apps_script" };
       } catch (scriptErr) {
-        console.error(`[mail] Apps Script relay failed (${scriptErr instanceof Error ? scriptErr.message : scriptErr})`);
+        const relayMessage = scriptErr instanceof Error ? scriptErr.message : String(scriptErr);
+        console.error(`[mail] Apps Script relay failed (${relayMessage})`);
         if (env.email.user && env.email.password) {
           console.info(`[mail] falling back to Gmail SMTP for "${mail.subject}"`);
-          await viaSmtp(mail);
-          return;
+          try {
+            await viaSmtp(mail);
+          } catch (smtpErr) {
+            throw new Error(`Apps Script relay failed (${relayMessage}); the Gmail fallback also failed (${smtpErr instanceof Error ? smtpErr.message : smtpErr})`);
+          }
+          return { sent: true, provider: "gmail", note: `Apps Script relay failed (${relayMessage}); sent through Gmail instead` };
         }
         throw scriptErr;
       }
     }
     await viaSmtp(mail);
+    return { sent: true, provider: "gmail" };
   },
 };

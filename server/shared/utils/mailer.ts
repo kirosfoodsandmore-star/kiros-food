@@ -1,6 +1,8 @@
 // Email building blocks. emailLayout() is the ONLY place <html>/<body> appear; every email body is
 // made of the components below. All user-supplied text must go through esc() / escapeAndLineBreak().
 import { mailTransport, type OutgoingMail } from "../../infrastructure/mail/mailTransport";
+import type { NewEmailLog } from "../../modules/notification/repositories/emailLog.repository";
+import { EmailLogService, subjectForLog, type MailKind } from "../../modules/notification/services/emailLog.service";
 
 const C = {
   dark: "#0f172a",
@@ -116,19 +118,33 @@ export interface ComposedMail {
 /**
  * Sends an email and never throws: failures are logged, because bookkeeping must not break the
  * action it describes. Returns whether it was handed to the mail provider.
+ * Every recipient is also recorded in the email log (platform admins can read it): who, which restaurant, the subject, what
+ * kind of email, and whether it was sent, failed or skipped. Never the body.
  */
-export async function sendMail(mail: OutgoingMail): Promise<boolean> {
+export async function sendMail(input: OutgoingMail & { organizationId?: string | null; kind?: MailKind }): Promise<boolean> {
+  const { organizationId = null, kind = null, ...mail } = input;
+  const subject = subjectForLog(mail.subject, kind);
+  const entry = (to: string, status: NewEmailLog["status"], provider: string | null, note: string | null): NewEmailLog => ({ organizationId, to, subject, kind, status, provider, note });
   // Reserved test domains (RFC 2606/6761) never receive mail — e.g. seeded @kiros.test logins.
-  const recipients = (Array.isArray(mail.to) ? mail.to : [mail.to]).filter((to) => !/\.(test|example|invalid|localhost)$/i.test(to.trim()));
+  const all = (Array.isArray(mail.to) ? mail.to : [mail.to]).map((to) => to.trim());
+  const isTest = (to: string) => /\.(test|example|invalid|localhost)$/i.test(to);
+  const recipients = all.filter((to) => !isTest(to));
+  const log: NewEmailLog[] = all.filter(isTest).map((to) => entry(to, "skipped", null, "Reserved test address: never emailed"));
   if (recipients.length === 0) {
     console.info(`[mail] skipped "${mail.subject}" (test address)`);
+    await EmailLogService.Instance.record(log);
     return false;
   }
   try {
-    await mailTransport.send({ ...mail, to: recipients });
+    const result = await mailTransport.send({ ...mail, to: recipients });
+    for (const to of recipients) log.push(entry(to, result.sent ? "sent" : "skipped", result.provider, result.note ?? null));
+    await EmailLogService.Instance.record(log);
     return mailTransport.configured();
   } catch (err) {
-    console.error(`[mail] failed to send "${mail.subject}"`, err instanceof Error ? err.message : err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[mail] failed to send "${mail.subject}"`, message);
+    for (const to of recipients) log.push(entry(to, "failed", null, message));
+    await EmailLogService.Instance.record(log);
     return false;
   }
 }

@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bike, Building2, ClipboardList, CreditCard, Globe, LayoutDashboard, ListChecks, MessageSquare, PackageX, Settings, ShieldCheck, Tag, UserCog, Users, UtensilsCrossed } from "lucide-react"
+import { Activity, BarChart3, Bike, Building2, ClipboardList, CreditCard, Globe, LayoutDashboard, ListChecks, Mail, MessageSquare, PackageX, Settings, ShieldCheck, Tag, UserCog, Users, UtensilsCrossed } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -64,7 +64,16 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: "/admin/staff", label: "Staff & roles", labelUnless: { permission: "staff.manage", label: "Staff" }, icon: UserCog, anyOf: ["staff.view"], cy: "nav-staff" },
       { to: "/admin/settings", label: "Settings", icon: Settings, anyOf: ["settings.view"], cy: "nav-settings" },
       { to: "/admin/audit", label: "Audit log", icon: ShieldCheck, anyOf: ["audit.view"], cy: "nav-audit" },
-      { to: "/admin/platform", label: "Platform", icon: Globe, platform: true, cy: "nav-platform" },
+    ],
+  },
+  // Everything only platform admins can open lives here, together. The whole section stays out of sight for everyone else
+  // (a section with no visible links isn't drawn), and a new platform page is added by listing it below.
+  {
+    id: "platform",
+    label: "Platform",
+    items: [
+      { to: "/admin/platform", label: "Overview", icon: Globe, platform: true, cy: "nav-platform" },
+      { to: "/admin/email-log", label: "Email log", icon: Mail, platform: true, cy: "nav-email-log" },
     ],
   },
 ]

@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { usePlatformMutations, usePlatformOnline, usePlatformOverview, usePlatformRestaurants } from "@/hooks/useAdminMisc"
+import { usePlatformMutations, usePlatformOnline, usePlatformOverview, usePlatformRestaurants, usePlatformSettings } from "@/hooks/useAdminMisc"
 import { useDebouncedSearch } from "@/hooks/useDebounce"
 
 export default function PlatformPage() {
@@ -23,6 +24,7 @@ export default function PlatformPage() {
   useEffect(() => setPage(1), [term])
   const { data, isLoading } = usePlatformRestaurants({ page, search: term || undefined })
   const m = usePlatformMutations()
+  const { data: settings, isError: settingsFailed } = usePlatformSettings()
   const tiles: Array<[string, number]> = overview ? [["Restaurants", overview.restaurants], ["New this week", overview.newThisWeek], ["Active staff", overview.staff], ["Customers", overview.customers], ["Orders (24h)", overview.ordersLast24h]] : []
   return (
     <div data-cy="platform-page">
@@ -31,6 +33,33 @@ export default function PlatformPage() {
         {tiles.map(([l, v]) => <Card key={l}><CardContent className="pt-5"><p className="text-xs text-muted-foreground">{l}</p><p className="font-display text-2xl font-semibold">{v}</p></CardContent></Card>)}
         {overview ? <Card><CardContent className="pt-5"><p className="text-xs text-muted-foreground">Revenue (24h)</p><p className="font-display text-2xl font-semibold"><Money value={overview.revenueLast24h} /></p></CardContent></Card> : null}
       </div>
+      <Card className="mt-5" data-cy="platform-settings">
+        <CardHeader><CardTitle>Notification settings</CardTitle></CardHeader>
+        <CardContent>
+          {settings ? (
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Skip the email when the push notification was delivered</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  A newly paid order alerts staff by push (on their phone or computer) and also by email. With this on, anyone the push was delivered to is not emailed the same alert.
+                  Anyone it did not reach, because they have not turned notifications on or the push failed, still gets the email. Off: everyone gets both. This is for the whole platform and only affects the new-order email to staff.
+                </p>
+              </div>
+              <Switch
+                checked={settings.skipEmailWhenPushDelivered}
+                onCheckedChange={(on) => m.updateSettings.mutate({ skipEmailWhenPushDelivered: on }, { onSuccess: () => toast.success(on ? "Staff reached by push won't be emailed the same alert" : "Staff will get both the push and the email"), onError: (e) => toast.error(e.message) })}
+                disabled={m.updateSettings.isPending}
+                aria-label="Skip the email when the push notification was delivered"
+                data-cy="setting-skip-email"
+              />
+            </div>
+          ) : settingsFailed ? (
+            <p className="text-sm text-muted-foreground" data-cy="platform-settings-error">The settings could not be loaded. Try again shortly.</p>
+          ) : (
+            <Skeleton className="h-14" />
+          )}
+        </CardContent>
+      </Card>
       <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div>
           <SearchInput value={search} onChange={setSearch} placeholder="Restaurant, slug or email" className="mb-3 w-72" dataCy="platform-search" />

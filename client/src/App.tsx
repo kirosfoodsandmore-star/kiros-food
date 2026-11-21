@@ -54,6 +54,7 @@ const StaffPage = lazy(() => import("@/pages/admin/StaffPage"))
 const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"))
 const AuditLogPage = lazy(() => import("@/pages/admin/AuditLogPage"))
 const PlatformPage = lazy(() => import("@/pages/admin/PlatformPage"))
+const EmailLogPage = lazy(() => import("@/pages/admin/EmailLogPage"))
 const MyAccountPage = lazy(() => import("@/pages/admin/MyAccountPage"))
 
 export default function App() {
@@ -113,7 +114,10 @@ export default function App() {
               <Route element={<ProtectedRoute anyOf={["staff.view"]} />}><Route path="staff" element={<StaffPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["settings.view"]} />}><Route path="settings" element={<SettingsPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["audit.view"]} />}><Route path="audit" element={<AuditLogPage />} /></Route>
-              <Route element={<ProtectedRoute platform />}><Route path="platform" element={<PlatformPage />} /></Route>
+              <Route element={<ProtectedRoute platform />}>
+                <Route path="platform" element={<PlatformPage />} />
+                <Route path="email-log" element={<EmailLogPage />} />
+              </Route>
             </Route>
           </Route>
 
