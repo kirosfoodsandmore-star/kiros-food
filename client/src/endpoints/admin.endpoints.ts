@@ -143,6 +143,8 @@ export const PushEndpoints = {
   status: () => wrapCall<{ enabled: boolean; devices: number }>("GET", `${A}/push/status`),
   register: (token: string) => wrapCall<null>("PUT", `${A}/push/token`, { token }),
   unregister: (token: string) => wrapCall<null>("DELETE", `${A}/push/token`, { token }),
+  /** Sends this person a real notification (the setup guide's last step). `delivered`: Google accepted it for one of their devices. */
+  test: () => wrapCall<{ delivered: boolean }>("POST", `${A}/push/test`),
 }
 
 export const OrderEndpoints = {

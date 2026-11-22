@@ -37,6 +37,11 @@ const write = (k: string, v: string | null) => {
 const registerOnServer = async (t: PushTarget, token: string) => unwrap(t.kind === "staff" ? await PushEndpoints.register(token) : await StoreEndpoints.pushRegister(t.slug, token))
 const unregisterOnServer = (t: PushTarget, token: string) => (t.kind === "staff" ? PushEndpoints.unregister(token) : StoreEndpoints.pushUnregister(t.slug, token))
 
+/** Someone switched notifications off on purpose on this device (so nothing should quietly turn them back on or nag). */
+export function pushOptedOut(target: PushTarget = STAFF_PUSH): boolean {
+  return read(KEYS[target.kind].off) === "1"
+}
+
 export async function pushState(target: PushTarget = STAFF_PUSH): Promise<PushState> {
   if (!pushConfigured) return "unconfigured"
   if (typeof Notification === "undefined" || !("serviceWorker" in navigator) || !(await isSupported().catch(() => false))) return "unsupported"

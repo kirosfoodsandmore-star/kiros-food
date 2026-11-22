@@ -21,7 +21,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
-      if (windows.some((w) => w.visibilityState === "visible")) return
+      // `always` (a test notification) is shown even then: the whole point is for the person to see it arrive.
+      if (!m.always && windows.some((w) => w.visibilityState === "visible")) return
       await self.registration.showNotification(m.title, {
         body: m.body || "",
         tag: m.tag || undefined,

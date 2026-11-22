@@ -5,6 +5,7 @@ import { ExternalLink, LogOut, Menu as MenuIcon, User, Volume2, VolumeX } from "
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
+import { PushGuide } from "@/components/onboarding/PushGuide"
 import { BrandLogo } from "@/components/shared/BrandLogo"
 import { PageLoader } from "@/components/shared/PageLoader"
 import { Button } from "@/components/ui/button"
@@ -170,6 +171,8 @@ export default function AdminLayout({ portal = "admin" }: { portal?: "admin" | "
           </Suspense>
         </main>
       </div>
+      {/* Walks someone new to this device through turning on notifications (all three portals share this shell). */}
+      <PushGuide />
     </div>
   )
 }

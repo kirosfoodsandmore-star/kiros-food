@@ -4,6 +4,7 @@ import { pushTokenSchema } from "../validators/push.schema";
 
 export class PushController {
   static status = handle("Notification status fetched", (req) => PushService.Instance.status(actorOf(req)));
+  static test = handle("Test notification sent", (req) => PushService.Instance.sendTest(actorOf(req)));
   static register = handle("Notifications turned on for this device", async (req) => {
     await PushService.Instance.registerDevice(actorOf(req), input(req, pushTokenSchema).body.token, clientOf(req).userAgent);
     return null;

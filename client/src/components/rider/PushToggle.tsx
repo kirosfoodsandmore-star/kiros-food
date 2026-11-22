@@ -3,6 +3,7 @@ import { Bell } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePush } from "@/hooks/usePush"
+import { OPEN_GUIDE_EVENT } from "@/lib/pushGuide"
 
 const ORDER_STAFF_TEXT = "New orders, payments to confirm, and anything a rider hands back, even when this app is closed."
 const RIDER_TEXT = "New deliveries, orders that are ready to collect, and anything handed back, even when this app is closed."
@@ -25,6 +26,9 @@ export function PushToggle() {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">Notifications on this device</p>
         <p className="text-sm text-muted-foreground">{usable ? (handlesOrders ? ORDER_STAFF_TEXT : RIDER_TEXT) : UNAVAILABLE[state]}</p>
+        {state !== "on" && state !== "unconfigured" ? (
+          <button type="button" className="mt-1 text-sm font-medium text-primary hover:underline" onClick={() => window.dispatchEvent(new Event(OPEN_GUIDE_EVENT))} data-cy="push-guide-open">Show me how</button>
+        ) : null}
       </div>
       {usable ? <Switch checked={state === "on"} onCheckedChange={(on) => void (on ? turnOn() : turnOff())} disabled={busy} aria-label="Notifications on this device" data-cy="push-switch" /> : null}
     </div>

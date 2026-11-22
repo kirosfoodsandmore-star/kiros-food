@@ -9,6 +9,7 @@ import { pushTokenSchema } from "../validators/push.schema";
 /** /api/v1/admin/push: any signed-in staff member can turn notifications on for their own device. */
 export const adminPushRouter = Router();
 adminPushRouter.get("/status", authMiddleware, requireAuthenticatedOnly(), C.status);
+adminPushRouter.post("/test", authMiddleware, requireAuthenticatedOnly(), C.test);
 adminPushRouter.put("/token", authMiddleware, requireAuthenticatedOnly(), validate(pushTokenSchema), C.register);
 adminPushRouter.delete("/token", authMiddleware, requireAuthenticatedOnly(), validate(pushTokenSchema), C.unregister);
 

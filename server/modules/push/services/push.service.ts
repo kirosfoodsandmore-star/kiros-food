@@ -8,6 +8,7 @@
 // reachedForEmailSkip(key) to learn who already has it. See PlatformSettings.skipEmailWhenPushDelivered.
 import { getMessaging } from "firebase-admin/messaging";
 import { firebaseConfigured, getFirebaseApp } from "../../../infrastructure/firebase/firebaseAdmin";
+import { AppError } from "../../../shared/errors/AppError";
 import type { Actor, CustomerActor } from "../../../shared/types/actor";
 import { PlatformSettingsService } from "../../platform/services/platformSettings.service";
 import { CustomerPushDeviceRepository } from "../repositories/customerPushDevice.repository";
@@ -22,6 +23,8 @@ export interface PushMessage {
   tag?: string;
   /** Path of the notification's icon, e.g. "/app-icon-192.png". Leave out for the service worker's default. */
   icon?: string;
+  /** Show it even while the app is open on screen. Normally the device stays quiet then, because the in-app alert covers it; a test must be seen. */
+  always?: boolean;
 }
 
 /** The key under which the new-order push publishes who it reached (the new-order email asks for the same key). */
@@ -49,6 +52,8 @@ interface Outcome {
 export class PushService {
   static Instance = new PushService();
   private readonly outcomes = new Map<string, Outcome>();
+  /** When each staff member last asked for a test, so the button can't be used to spam a device. */
+  private readonly lastTest = new Map<string, number>();
   private constructor(
     private readonly devices = PushDeviceRepository.Instance,
     private readonly customerDevices = CustomerPushDeviceRepository.Instance
@@ -56,6 +61,24 @@ export class PushService {
 
   get enabled(): boolean {
     return firebaseConfigured();
+  }
+
+  /**
+   * The setup guide's last step: send this staff member a real notification so they know it works. `delivered` means
+   * Google accepted it for at least one of their devices (it may still be held back by the phone's own settings).
+   */
+  async sendTest(actor: Actor): Promise<{ delivered: boolean }> {
+    if (!this.enabled) throw AppError.unavailable("Notifications haven't been set up on the server yet");
+    if (Date.now() - (this.lastTest.get(actor.id) ?? 0) < 10_000) throw AppError.conflict("Wait a few seconds before sending another test");
+    this.lastTest.set(actor.id, Date.now());
+    const reached = await this.sendToUsers([actor.id], {
+      title: "Notifications are on",
+      body: "This is a test. Alerts for your orders and deliveries will arrive like this.",
+      url: "/admin",
+      tag: "test-notification",
+      always: true,
+    });
+    return { delivered: reached.has(actor.id) };
   }
 
   async status(actor: Actor): Promise<{ enabled: boolean; devices: number }> {
@@ -96,7 +119,7 @@ export class PushService {
   private async sendBatch(tokens: string[], message: PushMessage): Promise<SendResult[]> {
     const res = await getMessaging(getFirebaseApp()).sendEachForMulticast({
       tokens,
-      data: { title: message.title, body: message.body, url: message.url, tag: message.tag ?? "", ...(message.icon ? { icon: message.icon } : {}) },
+      data: { title: message.title, body: message.body, url: message.url, tag: message.tag ?? "", ...(message.icon ? { icon: message.icon } : {}), ...(message.always ? { always: "1" } : {}) },
       // High urgency wakes a sleeping phone; one hour is plenty, an old "new delivery" is worse than none.
       webpush: { headers: { Urgency: "high", TTL: "3600" } },
     });
