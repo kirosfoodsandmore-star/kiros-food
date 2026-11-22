@@ -1,6 +1,6 @@
 // Business analytics: storefront sales and the books together. History and trends over any range (or since the
 // start), compared with the period before, plus restaurant KPIs, cash, payback, busy times and plain-language insights.
-import { format, parseISO } from "date-fns"
+import { differenceInCalendarDays, format, parseISO } from "date-fns"
 import { ArrowDown, ArrowUp, CircleCheck, Info, Lightbulb, Minus, OctagonAlert, Plus, TriangleAlert } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
     <div data-cy="analytics-page">
       <PageHeader
         title="Business analytics"
-        description={data ? `${format(parseISO(data.range.from), "d MMM yyyy")} → ${format(parseISO(data.range.to), "d MMM yyyy")} · compared with the ${Math.round(data.range.months * 30.4)} days before` : undefined}
+        description={data ? `${format(parseISO(data.range.from), "d MMM yyyy")} → ${format(parseISO(data.range.to), "d MMM yyyy")} · compared with the ${differenceInCalendarDays(parseISO(data.range.to), parseISO(data.range.from)) + 1} days before` : undefined}
         actions={
           <>
             <BranchSelect value={branchId} onChange={setBranchId} allowAll className="w-full sm:w-44" />

@@ -160,7 +160,10 @@ export function buildImport(text: string, categories: FinanceCategory[], branche
     const kindText = get(r, "kind")
     const kind = kindText ? KIND_ALIASES[norm(kindText)] : cat.kind
     if (!kind) return fail(`Unknown kind "${kindText}"`)
-    if (kind !== cat.kind) return fail(`"${cat.label}" is a ${KIND_LABELS[cat.kind].toLowerCase()} category, not ${KIND_LABELS[kind].toLowerCase()}`)
+    if (kind !== cat.kind) {
+      const its = KIND_LABELS[cat.kind].toLowerCase()
+      return fail(`"${cat.label}" is ${/^[aeiou]/.test(its) ? "an" : "a"} ${its} category, not ${KIND_LABELS[kind].toLowerCase()}`)
+    }
     const amount = toMinor(get(r, "amount").replace(/[₦,\s]/g, ""))
     if (!(amount > 0)) return fail(`Amount "${get(r, "amount")}" must be more than zero`)
     const branchText = get(r, "branch")
