@@ -128,6 +128,9 @@ export function previousRange(from: string, to: string): { from: string; to: str
   return { from: addDays(from, -days), to: addDays(from, -1) };
 }
 
+/** Shortest range (in months, about 28 days) over which spending is judged against a monthly budget. */
+export const MIN_MONTHS_FOR_BUDGET_CHECK = 0.9;
+
 /** Months spanned by a range (fractional, at least one day's worth). */
 export function monthsIn(from: string, to: string): number {
   return Math.max(daysBetween(from, to), 1) / 30.4375;
@@ -198,7 +201,9 @@ export function buildInsights(i: InsightInput): Insight[] {
     out.push({ tone: "warning", title: `Prime cost is ${pct(c.primeCostRatio)} of revenue`, detail: "Food plus labour above 65% leaves little for rent and everything else; 55–65% is the common target." });
   }
 
-  const overBudget = i.expenseByCategory
+  // Budgets are monthly. Under about a month a bill like rent lands in one range and not the next, so a "share of a month"
+  // comparison would raise false alarms; the analytics page makes the same cut (AnalyticsPage ExpenseCategories).
+  const overBudget = (i.months < MIN_MONTHS_FOR_BUDGET_CHECK ? [] : i.expenseByCategory)
     .filter((e) => e.budget !== null && e.budget > 0 && e.amount > e.budget * i.months * 1.05)
     .sort((a, b) => b.amount / (b.budget! * i.months) - a.amount / (a.budget! * i.months));
   for (const e of overBudget.slice(0, 2)) {

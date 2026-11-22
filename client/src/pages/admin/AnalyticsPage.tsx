@@ -395,13 +395,16 @@ function BestSellers({ rows, fmt }: { rows: FinanceAnalytics["bestSellers"]; fmt
 function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnType<typeof useAdminCurrency> }) {
   const rows = data.expenseByCategory
   const max = Math.max(1, ...rows.map((r) => Math.max(r.amount, r.budgetForPeriod ?? 0)))
-  // Budgets are set per month; the figure shown is scaled to the days in range, so say so (a 30-day range is a bit under a month).
+  // Budgets are saved per month, so that is the figure we show. The tick mark and the over/within check use that budget scaled
+  // to the days in range, but only for about a month or more: over a shorter range, one rent payment against a week's share
+  // is a false alarm, so we just show the monthly budget (same cut as the server's insights: MIN_MONTHS_FOR_BUDGET_CHECK).
   const days = differenceInCalendarDays(parseISO(data.range.to), parseISO(data.range.from)) + 1
-  const dayLabel = `${days} ${days === 1 ? "day" : "days"}`
+  const comparable = days / 30.4375 >= 0.9
+  const hasBudgets = rows.some((r) => r.budget !== null)
   return (
     <Card className="min-w-0">
       <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-        <div><CardTitle>Spending by category</CardTitle><p className="mt-1 text-sm text-muted-foreground">Against the period before and your budget (the tick mark). Monthly budgets are scaled to the {dayLabel} shown.</p></div>
+        <div><CardTitle>Spending by category</CardTitle><p className="mt-1 text-sm text-muted-foreground">{hasBudgets && !comparable ? "Against the period before. Pick 30 days or more to compare spending with your monthly budgets." : "Against the period before and your budget (the tick mark)."}</p></div>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? <p className="text-sm text-muted-foreground">No expenses in this range.</p> : (
@@ -410,7 +413,8 @@ function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnT
             {rows.map((r) => {
               const d = change(r.amount, r.previous)
               // 5% leeway (as the server's insights use): a monthly bill landing just inside the range isn't "over".
-              const over = r.budgetForPeriod !== null && r.amount > r.budgetForPeriod * 1.05
+              const planned = comparable ? r.budgetForPeriod : null
+              const overBy = planned !== null && r.amount > planned * 1.05 ? r.amount - planned : 0
               return (
                 <li key={r.category}>
                   <div className="flex items-baseline justify-between gap-2 text-sm">
@@ -419,12 +423,12 @@ function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnT
                   </div>
                   <div className="relative mt-1 h-2 rounded-full bg-muted">
                     <div className="h-2 rounded-full" style={{ width: `${(r.amount / max) * 100}%`, background: C2 }} />
-                    {r.budgetForPeriod ? <span className="absolute -top-0.5 h-3 w-0.5 rounded bg-foreground/70" style={{ left: `calc(${(r.budgetForPeriod / max) * 100}% - 1px)` }} title={`Monthly budget scaled to ${dayLabel}`} /> : null}
+                    {planned ? <span className="absolute -top-0.5 h-3 w-0.5 rounded bg-foreground/70" style={{ left: `calc(${(planned / max) * 100}% - 1px)` }} title="Your budget for the days shown" /> : null}
                   </div>
                   <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                     {d !== null ? <span>{d >= 0 ? "▲" : "▼"} {pct(Math.abs(d))} vs before</span> : r.previous === 0 && r.amount > 0 ? <span>new this period</span> : null}
-                    {r.budgetForPeriod !== null ? <span className={over ? "font-medium text-destructive" : undefined}>{over ? <><TriangleAlert className="mr-0.5 inline size-3" />Over budget by <Money value={r.amount - r.budgetForPeriod} fmt={fmt} /></> : <>Budget <Money value={r.budgetForPeriod} fmt={fmt} /></>}</span> : null}
-                    {r.budgetForPeriod !== null && r.budget !== null ? <span>for {dayLabel} · <Money value={r.budget} fmt={fmt} />/month</span> : null}
+                    {r.budget !== null ? <span>Budget <Money value={r.budget} fmt={fmt} /> a month</span> : null}
+                    {overBy > 0 ? <span className="font-medium text-destructive"><TriangleAlert className="mr-0.5 inline size-3" />Over budget by <Money value={overBy} fmt={fmt} /></span> : planned !== null ? <span>Within budget</span> : null}
                   </p>
                 </li>
               )
