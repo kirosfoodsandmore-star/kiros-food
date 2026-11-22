@@ -80,20 +80,20 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             </div>
             <div className="max-h-64 overflow-auto rounded-lg border border-border">
               <Table>
-                <TableHeader><TableRow><TableHead>Line</TableHead><TableHead>Date</TableHead><TableHead>Kind</TableHead><TableHead>Category</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead className="hidden sm:table-cell">Line</TableHead><TableHead>Date</TableHead><TableHead className="hidden sm:table-cell">Kind</TableHead><TableHead>Category</TableHead><TableHead className="hidden sm:table-cell">Description</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {[...bad, ...good].slice(0, 200).map((r) => (
                     <TableRow key={r.line}>
-                      <TableCell className="text-muted-foreground">{r.line}</TableCell>
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">{r.line}</TableCell>
                       {r.entry ? (
                         <>
                           <TableCell className="whitespace-nowrap">{r.entry.entryDate}</TableCell>
-                          <TableCell>{KIND_LABELS[r.entry.kind]}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{KIND_LABELS[r.entry.kind]}</TableCell>
                           <TableCell>{catalog.label(r.entry.category)}</TableCell>
-                          <TableCell className="max-w-48 truncate">{r.entry.title}</TableCell>
-                          <TableCell className="text-right tabular-nums"><Money value={r.entry.amount} fmt={fmt} /></TableCell>
+                          <TableCell className="hidden max-w-48 truncate sm:table-cell">{r.entry.title}</TableCell>
+                          <TableCell className="text-right whitespace-nowrap tabular-nums"><Money value={r.entry.amount} fmt={fmt} /></TableCell>
                         </>
-                      ) : <TableCell colSpan={5} className="text-destructive">{r.error}</TableCell>}
+                      ) : <TableCell colSpan={5} className="text-destructive"><span className="sm:hidden">Line {r.line}: </span>{r.error}</TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>

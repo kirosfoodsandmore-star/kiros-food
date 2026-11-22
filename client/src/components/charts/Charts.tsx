@@ -95,7 +95,7 @@ export function Legend({ series, className }: { series: Array<Pick<Series, "key"
 }
 
 function Tooltip({ left, width, children }: { left: number; width: number; children: ReactNode }) {
-  const w = 200
+  const w = Math.min(230, width)
   const x = Math.max(0, Math.min(left - w / 2, width - w))
   return (
     <div className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-md" style={{ left: x, width: w }} role="status">
@@ -108,7 +108,7 @@ function TipRow({ color, label, value }: { color?: string; label: string; value:
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">{color ? <span className="inline-block size-2 shrink-0 rounded-full" style={{ background: color }} /> : null}<span className="truncate">{label}</span></span>
-      <span className="font-medium tabular-nums text-foreground">{value}</span>
+      <span className="shrink-0 whitespace-nowrap font-medium tabular-nums text-foreground">{value}</span>
     </div>
   )
 }
@@ -143,7 +143,7 @@ export function TrendChart({ labels, series, format, height = 240, tickLabel, ax
   return (
     <div ref={ref} className="relative w-full" style={{ height }}>
       {width > 0 ? (
-        <svg width={width} height={height} onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="touch-pan-y select-none" role="img" aria-label={series.map((s) => s.label).join(", ")}>
+        <svg width={width} height={height} onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={(e) => { if (e.pointerType === "mouse") setHover(null) }} className="touch-pan-y select-none" role="img" aria-label={series.map((s) => s.label).join(", ")}>
           {ticks.map((t) => (
             <g key={t}>
               <line x1={PAD.l} x2={width - PAD.r} y1={y(t)} y2={y(t)} stroke="var(--border)" strokeWidth={t === 0 ? 1.25 : 1} />
@@ -201,7 +201,7 @@ export function ColumnChart({ labels, series, format, height = 220, tickLabel, s
   return (
     <div ref={ref} className="relative w-full" style={{ height }}>
       {width > 0 ? (
-        <svg width={width} height={height} onPointerLeave={() => setHover(null)} className="touch-pan-y select-none" role="img" aria-label={series.map((s) => s.label).join(", ")}>
+        <svg width={width} height={height} onPointerLeave={(e) => { if (e.pointerType === "mouse") setHover(null) }} className="touch-pan-y select-none" role="img" aria-label={series.map((s) => s.label).join(", ")}>
           {ticks.map((t) => (
             <g key={t}>
               <line x1={PAD.l} x2={width - PAD.r} y1={y(t)} y2={y(t)} stroke="var(--border)" strokeWidth={t === 0 ? 1.25 : 1} />
@@ -283,7 +283,7 @@ export function Heatmap({ cells, format }: { cells: Array<{ weekday: number; hou
   return (
     <div>
       <div className="overflow-x-auto">
-        <div className="grid min-w-[340px] gap-[2px]" style={{ gridTemplateColumns: "32px repeat(24, minmax(10px, 1fr))" }} onPointerLeave={() => setHover(null)}>
+        <div className="grid min-w-[270px] gap-[2px]" style={{ gridTemplateColumns: "28px repeat(24, minmax(8px, 1fr))" }} onPointerLeave={() => setHover(null)}>
           <span />
           {Array.from({ length: 24 }, (_, h) => <span key={h} className="text-center text-[9px] text-muted-foreground">{h % 3 === 0 ? hourName(h) : ""}</span>)}
           {grid.map((row, r) => (
@@ -306,7 +306,7 @@ export function Heatmap({ cells, format }: { cells: Array<{ weekday: number; hou
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="min-h-4">{cur ? <><span className="font-medium text-foreground">{DAYS[DOW.indexOf(cur.weekday)]} {hourName(cur.hour)}–{hourName((cur.hour + 1) % 24)}</span> · {cur.orders} orders · {format(cur.revenue)}</> : "Hover a square for the numbers."}</span>
+        <span className="min-h-4">{cur ? <><span className="font-medium text-foreground">{DAYS[DOW.indexOf(cur.weekday)]} {hourName(cur.hour)}–{hourName((cur.hour + 1) % 24)}</span> · {cur.orders} orders · {format(cur.revenue)}</> : "Tap or hover a square for the numbers."}</span>
         <span className="flex items-center gap-1">Fewer<span className="flex gap-[2px]">{[14, 35, 57, 78, 100].map((p) => <span key={p} className="inline-block size-3 rounded-[2px]" style={{ background: `color-mix(in srgb, var(--chart-1) ${p}%, var(--card))` }} />)}</span>More</span>
       </div>
     </div>

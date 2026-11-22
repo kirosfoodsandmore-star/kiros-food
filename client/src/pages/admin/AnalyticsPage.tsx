@@ -64,7 +64,8 @@ export default function AnalyticsPage() {
         }
       />
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <Tabs value={preset} onValueChange={(v) => setPreset(v as Preset)}>
+        {/* min-w-0 + max-w-full: on phones the presets scroll inside their strip instead of widening the page. */}
+        <Tabs value={preset} onValueChange={(v) => setPreset(v as Preset)} className="min-w-0 max-w-full">
           <TabsList>{PRESETS.map(([k, l]) => <TabsTrigger key={k} value={k} data-cy={`analytics-preset-${k}`}>{l}</TabsTrigger>)}</TabsList>
         </Tabs>
         {preset === "custom" ? <DateRangeFilter from={custom.from} to={custom.to} onChange={setCustom} /> : null}
@@ -221,6 +222,22 @@ function Body({ data, money, fmt, canManage }: { data: FinanceAnalytics; money: 
           <CardHeader><CardTitle>By branch</CardTitle></CardHeader>
           <CardContent>
             {data.branches.length === 0 ? <p className="text-sm text-muted-foreground">Nothing in this range.</p> : (
+              <>
+              {/* Phones: one compact block per branch, so profit is never scrolled out of sight. */}
+              <ul className="divide-y divide-border sm:hidden">
+                {data.branches.map((b) => (
+                  <li key={b.branchId ?? "business"} className="py-3 first:pt-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className={cn("font-medium", !b.branchId && "text-muted-foreground")}>{b.name}</span>
+                      <span className="text-sm font-medium tabular-nums"><Signed value={b.operatingProfit} money={money} /></span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                      {b.orders} orders · revenue <Money value={b.revenue} fmt={fmt} /> · costs <Money value={b.expenses} fmt={fmt} />{b.branchId && b.operatingMargin !== null ? ` · ${pct(b.operatingMargin)} margin` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden sm:block">
               <Table>
                 <TableHeader><TableRow><TableHead>Branch</TableHead><TableHead className="text-right">Orders</TableHead><TableHead className="text-right">Revenue</TableHead><TableHead className="text-right">Costs</TableHead><TableHead className="text-right">Profit</TableHead><TableHead className="hidden text-right sm:table-cell">Margin</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -236,6 +253,8 @@ function Body({ data, money, fmt, canManage }: { data: FinanceAnalytics; money: 
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
             <p className="mt-2 text-xs text-muted-foreground">Costs filed against the whole business (not one branch) appear on their own row.</p>
           </CardContent>
@@ -310,7 +329,7 @@ function StatTile({ label, value, now, before, upIsGood, spark, ratio }: { label
     <Card>
       <CardContent className="p-4">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="mt-1 truncate font-display text-lg font-semibold sm:text-xl">{value}</p>
+        <p className="mt-1 break-all font-display text-lg font-semibold sm:text-xl">{value}</p>
         <div className="mt-1 flex items-end justify-between gap-2">
           <span className={cn("flex items-center gap-0.5 text-xs", good === null ? "text-muted-foreground" : good ? "text-success" : "text-destructive")}>
             <Icon className="size-3" aria-hidden />
@@ -333,7 +352,8 @@ function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnT
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? <p className="text-sm text-muted-foreground">No expenses in this range.</p> : (
-          <ul className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
+          // Capped with its own scroll only beside the chart on wide screens; on phones it's part of the page scroll.
+          <ul className="space-y-3 lg:max-h-[360px] lg:overflow-y-auto lg:pr-1">
             {rows.map((r) => {
               const d = change(r.amount, r.previous)
               // 5% leeway (as the server's insights use): a monthly bill landing just inside the range isn't "over".

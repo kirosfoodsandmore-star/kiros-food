@@ -97,8 +97,8 @@ export default function FinancePage() {
             <Card key={t.label}>
               <CardContent className="p-4 sm:p-5">
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><t.icon className="size-4" />{t.label}</p>
-                <p className="mt-1 truncate font-display text-xl font-semibold sm:text-2xl"><Money value={t.value} fmt={fmt} /></p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{t.hint}</p>
+                <p className="mt-1 break-all font-display text-lg font-semibold sm:text-2xl"><Money value={t.value} fmt={fmt} /></p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.hint}</p>
               </CardContent>
             </Card>
           ))}
@@ -149,6 +149,38 @@ export default function FinancePage() {
         <p className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">{empty ? "Nothing recorded yet." : "Nothing matches these filters."}</p>
       ) : (
         <>
+          {/* Phones: one card per entry, so the amount and the edit/delete buttons never scroll out of view. */}
+          <ul className="divide-y divide-border rounded-xl border border-border bg-card md:hidden" data-cy="finance-list-mobile">
+            {entries.map((e) => (
+              <li key={e.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium break-words">{e.title}</p>
+                    {e.party || e.reference ? <p className="text-xs text-muted-foreground break-words">{[e.party, e.reference].filter(Boolean).join(" · ")}</p> : null}
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 font-medium tabular-nums">
+                    {KIND_SIGN[e.kind] > 0 ? <ArrowUpRight className="size-3.5 text-success" aria-label="Money in" /> : <ArrowDownRight className="size-3.5 text-destructive" aria-label="Money out" />}
+                    <Money value={e.amount} fmt={fmt} />
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <span>{format(parseISO(e.entryDate), "d MMM yyyy")}</span>
+                    <Badge variant={KIND_BADGE[e.kind]}>{KIND_LABELS[e.kind]}</Badge>
+                    <span>{catalog.label(e.category)}</span>
+                    <span>· {branchName(e.branchId)}</span>
+                  </div>
+                  {manage ? (
+                    <div className="flex shrink-0">
+                      <Button variant="ghost" size="icon-sm" onClick={() => setDialog({ open: true, entry: e })} aria-label="Edit"><Pencil /></Button>
+                      <Button variant="ghost" size="icon-sm" onClick={() => setDel(e)} aria-label="Delete"><Trash2 className="text-destructive" /></Button>
+                    </div>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow><TableHead>Date</TableHead><TableHead>Description</TableHead><TableHead>Category</TableHead><TableHead className="hidden md:table-cell">Branch</TableHead><TableHead className="hidden lg:table-cell">Paid by</TableHead><TableHead className="text-right">Amount</TableHead>{manage ? <TableHead /> : null}</TableRow>
@@ -185,6 +217,7 @@ export default function FinancePage() {
               ))}
             </TableBody>
           </Table>
+          </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>{res?.meta?.total ?? 0} entries · total <Money value={res?.sum ?? 0} fmt={fmt} className="font-medium text-foreground" />{tab === "all" ? " (money in and out combined; filter by kind for a meaningful total)" : ""}</span>
             {can("finance.view") ? <Link to="/admin/analytics" className="text-primary hover:underline">See the analytics →</Link> : null}
