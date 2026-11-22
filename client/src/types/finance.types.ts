@@ -35,6 +35,33 @@ export interface FinanceEntry {
   createdByName: string | null
   createdAt: string
   updatedAt: string
+  /** Who it was paid to / received from, each with their share (adds up to amount). */
+  parties: PartyLine[]
+}
+
+export interface PartyLine {
+  partyId: string
+  name: string
+  amount: number
+}
+
+/** A line as sent: a saved party by id, or a name (found or created by the server). */
+export interface PartyLineInput {
+  partyId?: string
+  name?: string
+  amount: number
+}
+
+/** A saved vendor / customer / investor, with how it's been used. */
+export interface FinanceParty {
+  id: string
+  name: string
+  phone: string | null
+  notes: string | null
+  entries: number
+  total: number
+  lastUsed: string | null
+  kinds: FinanceKind[]
 }
 
 export interface FinanceEntryInput {
@@ -46,6 +73,7 @@ export interface FinanceEntryInput {
   branchId?: string | null
   paymentMethod?: string | null
   party?: string | null
+  parties?: PartyLineInput[]
   reference?: string | null
   notes?: string | null
 }
@@ -114,6 +142,7 @@ export interface FinanceAnalytics {
   branches: Array<{ branchId: string | null; name: string; orders: number; revenue: number; expenses: number; capex: number; operatingProfit: number; operatingMargin: number | null }>
   heatmap: Array<{ weekday: number; hour: number; orders: number; revenue: number }>
   topVendors: Array<{ party: string; amount: number; entries: number }>
+  topCustomers: Array<{ party: string; amount: number; entries: number }>
   funding: Array<{ id: string; date: string; kind: "capital" | "withdrawal"; kindLabel: string; category: string; categoryLabel: string; title: string; party: string | null; amount: number; netCapital: number }>
   insights: Array<{ tone: InsightTone; title: string; detail: string }>
   hasLedger: boolean

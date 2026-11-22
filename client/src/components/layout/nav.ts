@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bike, Building2, ClipboardList, CreditCard, Globe, LayoutDashboard, ListChecks, Mail, MessageSquare, PackageX, Settings, ShieldCheck, Tag, TrendingUp, UserCog, Users, UtensilsCrossed, Wallet } from "lucide-react"
+import { Activity, BarChart3, Bike, Building2, ClipboardList, CreditCard, Globe, HandCoins, LayoutDashboard, ListChecks, Mail, MessageSquare, PackageX, Settings, ShieldCheck, Tag, TrendingUp, UserCog, Users, UtensilsCrossed, Wallet } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -10,6 +10,8 @@ export interface NavItem {
   platform?: boolean
   /** Shown instead of `label` to anyone who lacks this permission. */
   labelUnless?: { permission: string; label: string }
+  /** Hidden from anyone who has this permission (e.g. a simpler page that a fuller one already covers). */
+  hideIf?: string
   cy: string
 }
 
@@ -57,6 +59,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: "/admin/reports", label: "Sales reports", icon: BarChart3, anyOf: ["reports.view"], cy: "nav-reports" },
       { to: "/admin/analytics", label: "Analytics", icon: TrendingUp, anyOf: ["finance.view"], cy: "nav-analytics" },
       { to: "/admin/finance", label: "Capital & expenses", icon: Wallet, anyOf: ["finance.view"], cy: "nav-finance" },
+      { to: "/admin/sales", label: "Record sales", icon: HandCoins, anyOf: ["finance.record_sales"], hideIf: "finance.view", cy: "nav-record-sales" },
     ],
   },
   {

@@ -32,6 +32,23 @@ export function useFinanceBudgets() {
   return useQuery({ queryKey: [FINANCE_KEY, "budgets"], queryFn: async () => unwrap(await FinanceEndpoints.budgets()) })
 }
 
+/** Saved vendors & customers (names only, for sales-only staff). */
+export function useFinanceParties(enabled = true) {
+  return useQuery({ queryKey: [FINANCE_KEY, "parties"], queryFn: async () => unwrap(await FinanceEndpoints.parties()), enabled, staleTime: 60_000 })
+}
+
+export function usePartyMutations() {
+  const qc = useQueryClient()
+  // Renames and merges change names shown on entries too.
+  const done = () => qc.invalidateQueries({ queryKey: [FINANCE_KEY] })
+  return {
+    create: useMutation({ mutationFn: async (b: { name: string; phone?: string | null; notes?: string | null }) => unwrap(await FinanceEndpoints.createParty(b)), onSuccess: done }),
+    update: useMutation({ mutationFn: async (v: { id: string; body: { name?: string; phone?: string | null; notes?: string | null } }) => unwrap(await FinanceEndpoints.updateParty(v.id, v.body)), onSuccess: done }),
+    merge: useMutation({ mutationFn: async (v: { id: string; intoId: string }) => unwrap(await FinanceEndpoints.mergeParty(v.id, v.intoId)), onSuccess: done }),
+    remove: useMutation({ mutationFn: async (id: string) => unwrap(await FinanceEndpoints.removeParty(id)), onSuccess: done }),
+  }
+}
+
 export function useFinanceMutations() {
   const qc = useQueryClient()
   const done = () => qc.invalidateQueries({ queryKey: [FINANCE_KEY] })

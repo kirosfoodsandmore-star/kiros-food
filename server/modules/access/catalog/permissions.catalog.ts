@@ -58,6 +58,7 @@ export const PERMISSIONS = [
   // ── Finance (owner only by default) ────────────────────────────────────────
   { code: "finance.view", category: "Finance", label: "See capital, expenses, other income, budgets and business analytics", ownerOnlyDefault: true },
   { code: "finance.manage", category: "Finance", label: "Record, import and edit capital, expenses, income and budgets", ownerOnlyDefault: true },
+  { code: "finance.record_sales", category: "Finance", label: "Record walk-in and other sales only (sees just the sales they entered; no capital, expenses or analytics)" },
 
   // ── Staff (owner only by default) ──────────────────────────────────────────
   { code: "staff.view", category: "Staff", label: "See staff and pending invites" },

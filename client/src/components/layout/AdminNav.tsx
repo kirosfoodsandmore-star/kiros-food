@@ -23,7 +23,7 @@ export function CountBadge({ count, label, className }: { count: number; label: 
 }
 
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
-  const { session, canAny } = useAuth()
+  const { session, can, canAny } = useAuth()
   const { pathname } = useLocation()
   const [collapsed, setCollapsed] = usePersistedState<Record<string, boolean>>("kiros.admin.nav.collapsed", {})
 
@@ -36,7 +36,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const counts: Record<string, { n: number; label: string }> = { "/admin/orders": { n: attention, label: `${plural(attention, "order")} need${attention === 1 ? "s" : ""} attention` } }
   const sectionCount = (items: NavItem[]) => items.reduce((sum, i) => sum + (counts[i.to]?.n ?? 0), 0)
 
-  const visible = (i: NavItem) => (i.platform ? Boolean(session?.user.isPlatformAdmin) : !i.anyOf || canAny(...i.anyOf))
+  const visible = (i: NavItem) => (i.platform ? Boolean(session?.user.isPlatformAdmin) : (!i.anyOf || canAny(...i.anyOf)) && !(i.hideIf && can(i.hideIf)))
   const sections = NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter(visible) })).filter((s) => s.items.length > 0)
 
   // Same matching NavLink uses: the dashboard only on its own path, everything else by prefix.

@@ -28,6 +28,8 @@ export interface EntryFilter {
   category?: string;
   from?: string;
   to?: string;
+  /** Only entries this person recorded (sales-only staff). */
+  createdBy?: string;
 }
 
 export interface LedgerBucketRow {
@@ -79,6 +81,7 @@ export class FinanceRepository {
     const where = this.entryWhere(p, organizationId, branchIds);
     if (f.kind) where.push(`e.kind = ${p.add(f.kind)}`);
     if (f.category) where.push(`e.category = ${p.add(f.category)}`);
+    if (f.createdBy) where.push(`e.created_by = ${p.add(f.createdBy)}`);
     if (f.from) where.push(`e.entry_date >= ${p.add(f.from)}::date`);
     if (f.to) where.push(`e.entry_date <= ${p.add(f.to)}::date`);
     if (f.search) {
@@ -105,14 +108,19 @@ export class FinanceRepository {
     return repo.save(repo.create(data));
   }
 
-  async createMany(rows: NewEntry[], tx: Tx): Promise<number> {
+  /** Inserts in chunks; returns the new ids in the same order as `rows`. */
+  async createMany(rows: NewEntry[], tx: Tx): Promise<string[]> {
     const repo = tx.getRepository(FinanceEntryEntity);
-    for (let i = 0; i < rows.length; i += 200) await repo.insert(rows.slice(i, i + 200));
-    return rows.length;
+    const ids: string[] = [];
+    for (let i = 0; i < rows.length; i += 200) {
+      const res = await repo.insert(rows.slice(i, i + 200));
+      ids.push(...res.identifiers.map((x) => String(x.id)));
+    }
+    return ids;
   }
 
-  async update(organizationId: string, id: string, data: Partial<FinanceEntry>): Promise<void> {
-    await db().getRepository(FinanceEntryEntity).update({ id, organizationId }, data);
+  async update(organizationId: string, id: string, data: Partial<FinanceEntry>, tx?: Tx): Promise<void> {
+    await db(tx).getRepository(FinanceEntryEntity).update({ id, organizationId }, data);
   }
 
   async softDelete(organizationId: string, id: string): Promise<void> {
@@ -151,13 +159,15 @@ export class FinanceRepository {
     return rows[0]?.d ?? null;
   }
 
-  async topParties(s: LedgerScope, limit = 6): Promise<Array<{ party: string; amount: number; entries: number }>> {
+  /** Biggest vendors (kind expense) or customers (kind income) by their own share of split entries. */
+  async topParties(s: LedgerScope, kind: "expense" | "income", limit = 6): Promise<Array<{ party: string; amount: number; entries: number }>> {
     const p = new SqlParams();
     const where = this.entryWhere(p, s.organizationId, s.branchIds);
-    where.push(`e.kind = 'expense'`, `e.party IS NOT NULL`, `e.party <> ''`, `e.entry_date BETWEEN ${p.add(s.from)}::date AND ${p.add(s.to)}::date`);
+    where.push(`e.kind = ${p.add(kind)}`, `e.entry_date BETWEEN ${p.add(s.from)}::date AND ${p.add(s.to)}::date`);
     const rows: Array<{ party: string; amount: number; entries: number }> = await db().query(
-      `SELECT MIN(e.party) AS party, SUM(e.amount) AS amount, COUNT(*)::int AS entries FROM finance_entries e
-       WHERE ${where.join(" AND ")} GROUP BY lower(trim(e.party)) ORDER BY 2 DESC LIMIT ${p.add(limit)}`,
+      `SELECT pa.name AS party, SUM(l.amount) AS amount, COUNT(DISTINCT e.id)::int AS entries
+       FROM finance_entry_parties l JOIN finance_entries e ON e.id = l.entry_id JOIN finance_parties pa ON pa.id = l.party_id
+       WHERE ${where.join(" AND ")} GROUP BY pa.id, pa.name ORDER BY 2 DESC LIMIT ${p.add(limit)}`,
       p.values
     );
     return rows.map((r) => ({ ...r, amount: Number(r.amount) }));

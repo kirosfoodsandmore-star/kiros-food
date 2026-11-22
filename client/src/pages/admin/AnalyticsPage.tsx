@@ -280,11 +280,17 @@ function Body({ data, money, fmt, canManage }: { data: FinanceAnalytics; money: 
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Top vendors this period</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Top vendors & customers this period</CardTitle></CardHeader>
           <CardContent>
             {data.topVendors.length === 0 ? <p className="text-sm text-muted-foreground">Add a vendor to expenses to see who you spend the most with.</p> : (
               <ul className="space-y-3">{data.topVendors.map((v) => <BarRow key={v.party} label={`${v.party} (${v.entries})`} amount={v.amount} max={data.topVendors[0].amount} share={running(t) + t.capex ? v.amount / (running(t) + t.capex) : null} color={C2} fmt={fmt} />)}</ul>
             )}
+            {data.topCustomers.length ? (
+              <>
+                <p className="mt-5 mb-3 text-sm font-semibold">Top customers (other income)</p>
+                <ul className="space-y-3" data-cy="top-customers">{data.topCustomers.map((v) => <BarRow key={v.party} label={`${v.party} (${v.entries})`} amount={v.amount} max={data.topCustomers[0].amount} share={t.otherIncome ? v.amount / t.otherIncome : null} color={C1} fmt={fmt} />)}</ul>
+              </>
+            ) : null}
           </CardContent>
         </Card>
       </div>

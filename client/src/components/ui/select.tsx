@@ -3,7 +3,15 @@ import { Check, ChevronDown } from "lucide-react"
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-export const Select = SelectPrimitive.Root
+/**
+ * Radix keeps a hidden native <select> beside the visible one and forwards ANY change on it as a selection. Browser
+ * autofill / form restore can fire that change with an empty value (e.g. when you come back to the tab), which would
+ * silently clear a field while the trigger still shows the old choice. Radix forbids empty item values, so an empty
+ * change can only come from the browser: it's ignored, and autofill is switched off on the hidden select.
+ */
+export function Select({ onValueChange, autoComplete = "off", ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  return <SelectPrimitive.Root {...props} autoComplete={autoComplete} onValueChange={onValueChange ? (v) => { if (v !== "") onValueChange(v) } : undefined} />
+}
 export const SelectGroup = SelectPrimitive.Group
 export const SelectValue = SelectPrimitive.Value
 

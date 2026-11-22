@@ -19,22 +19,25 @@ Each story reads `As an owner (or manager, or staff member), I want … so that 
 | --- | --- | --- |
 | Capital & expenses | Admin sidebar → Business → **Capital & expenses** (`/admin/finance`) | Anyone with `finance.view` |
 | Business analytics | Admin sidebar → Business → **Analytics** (`/admin/analytics`) | Anyone with `finance.view` |
+| Record sales | Admin sidebar → Business → **Record sales** (`/admin/sales`) | Sales-only staff (`finance.record_sales` without `finance.view`); it's their home page |
 | Sales reports (unchanged) | Admin sidebar → Business → **Sales reports** | Anyone with `reports.view` |
 
 | Permission | What it allows |
 | --- | --- |
-| `finance.view` | Open both pages, read every entry and budget, see all the analytics |
-| `finance.manage` | Record, import, edit and delete entries; set budgets |
-| `reports.export` (existing) | Download the ledger as CSV |
+| `finance.view` | Open Capital & expenses and Analytics, read every entry and budget, see all the analytics and the vendors & customers list with totals |
+| `finance.manage` | Record, import, edit and delete any entry; set budgets; add, rename, merge and remove vendors & customers |
+| `finance.record_sales` | **Sales only:** record other income (walk-in, catering…), split between customers; see and correct only the sales they recorded, on the same day. No capital, expenses, budgets, analytics, imports or downloads. |
+| `reports.export` (existing) | Download the books as an Excel file |
 
-The Owner role has everything. No other role gets `finance.view` or `finance.manage` until the Owner grants them, because the books show capital, salaries and profit.
+The Owner role has everything. No other role gets any finance permission until the Owner grants it, because the books show capital, salaries and profit.
 
 ---
 
 ## Stage 1 — Switch it on
 
 - [ ] **As the owner, I want the feature live after the next deploy, so that I don't have to set anything up by hand.**
-  - The new database tables are created automatically when the API restarts on Render (the `FinanceLedger` migration).
+  - The new database tables are created automatically when the API restarts on Render (the `FinanceLedger` and `FinanceParties` migrations).
+  - Any vendor or customer names already typed into entries become saved vendors & customers automatically. Different spellings of the same name ("Mile 12 market", "  mile 12 MARKET ") become one.
   - Sign in as the Owner. Under **Business** you should see **Sales reports**, **Analytics** and **Capital & expenses**.
 
 - [ ] **As the owner, I want to choose who else can see the money, so that salaries and capital stay private by default.**
@@ -43,7 +46,15 @@ The Owner role has everything. No other role gets `finance.view` or `finance.man
 
 - [ ] **As a branch manager limited to some branches, I want to see only my branches' money, so that I'm not shown the whole business.**
   - A person who isn't set to "all branches" sees only entries filed against their branches, and analytics only for their branches.
-  - They can't record a "Whole business" entry; the app tells them to choose a branch.
+  - They can't record a "Whole business" entry: the Branch box only lists their own branches.
+
+- [ ] **As the owner, I want a cashier to record sales without seeing the rest of the books, so that sales get entered daily without exposing capital, salaries or profit.**
+  1. In **Staff & roles**, create a role (e.g. "Cashier") and tick only **Finance → Record walk-in and other sales only**. Give it to the person and set their branch.
+  2. When they sign in they land on **Record sales**, and that's the only finance link they see. Opening `/admin/finance` or `/admin/analytics` sends them away.
+  3. **Record a sale** opens the form locked to sales: no capital/expense/money-out switch, the Branch box shows only their branch, and the lines are **Customers**.
+  4. The page shows what they've recorded today and their own sales. They can edit or delete a sale only on the day they recorded it; after that it's "ask a manager". Managers can always correct it in Capital & expenses.
+  - They see only the names of customers already used on sales: no vendor names and no amounts. They can't import, download, set budgets, or manage the vendors & customers list.
+  - Someone with both this and `finance.view` doesn't get the extra link: Capital & expenses already covers it.
 
 ---
 
@@ -97,33 +108,42 @@ What to bring in, in this order:
   - **Record** → **Expense** → choose the category (they're grouped as above) → amount → date in the past → optional vendor, branch, "paid by", reference and notes.
   - The date field won't let you pick a future day. The hint under it reminds you that back-dating is fine.
 
-- [ ] **As the owner, I want to import a year of records from a spreadsheet in one go, so that I don't type hundreds of rows.**
-  1. Click **Import** → **Template** to download `kiros-finance-template.csv`. Open it in Excel or Google Sheets.
-  2. Fill one row per entry and save as CSV. Or copy the rows straight from your sheet, header line included.
-  3. Back in **Import**, click **Choose CSV file** or paste into the box.
+- [ ] **As the owner, I want to import a year of records from an Excel sheet in one go, so that I don't type hundreds of rows.**
+  1. Click **Import** → **Download Excel template**. You get `kiros-finance-template.xlsx`.
+  2. Open it in Excel (or Google Sheets / Numbers) and fill in the **Entries** sheet, one row per entry. Save it as `.xlsx`.
+  3. Back in **Import**, click **Choose Excel file** and pick it. The dialog shows the file name, the sheet it read and how many rows it found.
   4. Check the preview: a green "N ready" badge, a red "N with problems (skipped)" badge if any, and the total.
   5. Click **Import N rows**. You should see "Imported N entries", and the totals at the top update.
 
-| Column | Needed? | Accepts |
-| --- | --- | --- |
-| date | Yes | `2025-02-01`, `01/02/2025` (day first), `1 Feb 2025` |
-| category | Yes | The name ("Rent", "Ingredients & stock") or the key ("ingredients") |
-| amount | Yes | Naira: `300000`, `300,000`, `₦300,000` |
-| kind | No | Worked out from the category when blank (capital, expense, income, money out) |
-| title / description | No | Defaults to the category name |
-| vendor / payee / supplier | No | Free text |
-| method / paid by | No | cash, transfer, POS, card, cheque, other |
-| reference, notes | No | Free text |
-| branch | No | The branch's name exactly as in Branches; blank = whole business |
+- [ ] **As the owner, I want the template to stop typing mistakes before they happen, so that most rows import first time.**
+  - **Category**, **Paid by** and **Branch** are dropdowns. Category lists all 28 categories; Branch lists your own branches (blank = whole business).
+  - **Date** only accepts a real date, not in the future. **Amount** only accepts a number above zero. Excel shows a message if something else is typed.
+  - Each column heading has a comment explaining what goes in it. The header row stays frozen while you scroll.
+  - The template also has an **Example** sheet with a finished month, a **Categories** sheet listing every category with its type and group, and a **How to fill** sheet. Only **Entries** is ever imported.
 
-Column names are matched loosely ("Description", "Amount (naira)", "Paid to" all work).
+| Column (Entries sheet) | Needed? | Accepts |
+| --- | --- | --- |
+| Date | Yes | A date cell (shown as 31/01/2025). Typed text like `01/02/2025` (day first), `2025-02-01` or `1 Feb 2025` also works. |
+| Category | Yes | Pick from the dropdown. The category decides the type: capital in, expense, other income or money out. |
+| Description | No | Defaults to the category name |
+| Amount (₦) | Yes | Naira, more than zero. Formulas are fine (their result is used). |
+| Vendor / paid to | No | One name per row. It is matched to your saved vendors & customers (capitals don't matter) or added as a new one. To split a purchase between vendors in Excel, put one row per vendor. |
+| Paid by | No | Dropdown: Cash, Bank transfer, POS, Card, Cheque, Other |
+| Reference, Notes | No | Free text |
+| Branch | No | Dropdown of your branches; blank = whole business |
+
+- [ ] **As the owner, I want to use the spreadsheet I already keep, so that I don't retype it into the template.**
+  - Any `.xlsx` works as long as the first row has headings. The **Entries** sheet is read if there is one, otherwise the first sheet.
+  - Headings are matched loosely ("Description", "Narration", "Amount (naira)", "Paid to", "Supplier", "Type" all work). A **Type**/**Kind** column is optional: it's worked out from the category when missing.
+  - You can also copy rows in Excel (with the heading row) and paste them into the box under the buttons.
+  - Old `.xls` files are refused with a message to save them as `.xlsx` first.
 
 - [ ] **As the owner, I want bad rows explained instead of silently dropped, so that I can fix them.**
-  - Each problem row says why, e.g. `Date "2024-02-30" isn't a date`, `Unknown category "Pizza"`, `No branch called "Nowhere"`, `Date is in the future`, `"Rent" is an expense category, not capital in`.
-  - Only the good rows are imported. Fix the others and import just those again.
+  - Each problem row shows its **Excel row number** and why, e.g. `Date "2024-02-30" isn't a date`, `Unknown category "Pizza"`, `No branch called "Abuja"`, `Date is in the future`, `Amount "0" must be more than zero`, `"Rent" is an expense category, not capital in`.
+  - Only the good rows are imported. Fix the others in Excel and import just those again.
 
 - [ ] **As the owner, I want limits that protect against mistakes, so that one bad file doesn't flood the books.**
-  - Up to 1,000 rows per import and a 2 MB file. Split bigger histories by year.
+  - Up to 1,000 rows per import and a 5 MB file. Split bigger histories into one file per year.
   - All rows in one import are saved together or not at all.
   - The audit log records "Imported N finance entries (total)".
 
@@ -134,9 +154,25 @@ Column names are matched loosely ("Description", "Amount (naira)", "Paid to" all
 - [ ] **As the owner, I want to record today's expense in a few seconds, so that the books stay current.**
   - **Record** opens on **Expense** with today's date. Category, amount, **Record**. The description defaults to the category name if left blank.
 
+- [ ] **As the owner, I want a half-filled form to survive me switching to another tab or app, so that I can check a receipt and come back.**
+  - Open **Record**, pick a category and type an amount, switch to another browser tab (or app on your phone), come back and press **Record**. It saves, with no "Choose a category" message.
+
+- [ ] **As the owner, I want to pick vendors I've used before instead of retyping them, so that names stay consistent and analytics adds them up properly.**
+  - In **Vendor / paid to**, start typing: saved names appear underneath (names already used on this type of entry come first, with how often they've been used). Pick one with a click or arrow keys + Enter.
+  - A new name is fine: "Add “…” as new" saves it to your list when you record the entry. Spelling differences in capitals are matched ("mile 12 market" = "Mile 12 market").
+  - The label follows the type of entry: **Vendor / paid to** (expense), **Customer / client** (other income), **From** (capital), **Paid to** (money out).
+
+- [ ] **As the owner, I want one purchase paid to several vendors saved in one go, so that a market run doesn't need five entries.**
+  1. **Record → Expense**, pick the category, then **Split between several vendors**.
+  2. Each line has a vendor and an amount; **Add another vendor** for more, and **×** removes a line.
+  3. The Amount box becomes **Total** and adds up the lines by itself. Back to one line, it goes back to a normal amount.
+  - Saved as one entry with each vendor's share, e.g. "Market run ₦100,000: Iya Bose ₦40,000, Mallam Sani ₦25,000, Fresh Farms ₦35,000".
+  - Editing a split: change the lines and the total follows. Changing only the total of a split is refused ("change their amounts too").
+
 - [ ] **As the owner, I want to record walk-in and catering sales, so that revenue isn't just the app's orders.**
   - **Record → Other income → Walk-in / offline sales** (or **Catering & events**).
-  - This adds to **Revenue** in analytics and appears separately under **Revenue sources**.
+  - One sale can be split between several customers the same way, e.g. a catering job paid by two clients.
+  - This adds to **Revenue** in analytics and appears separately under **Revenue sources**. Customers appear under **Top customers**.
 
 - [ ] **As the owner, I want to record money I take out, so that cash and capital stay honest.**
   - **Record → Money out → Owner's drawings / Loan repayment / Dividend**.
@@ -154,6 +190,13 @@ Column names are matched loosely ("Description", "Amount (naira)", "Paid to" all
 
 - [ ] **As the owner, I want the app to refuse impossible entries, so that the books can't be corrupted.**
   - No future dates, no zero or negative amounts, and no category from the wrong kind (e.g. "Rent" as capital in).
+  - In a split, every line needs a name and an amount, the same name can't appear twice, and the lines must add up to the total.
+
+- [ ] **As the owner, I want to tidy my vendors & customers list, so that duplicates don't split my analytics.**
+  - **Capital & expenses → Vendors & customers** lists every name with its role (Vendor, Customer, Investor / lender), how many entries, the total, and when it was last used. Search at the top.
+  - **Add** a name in advance. **Rename** (pencil): every entry shows the new name. Renaming onto a name that already exists is refused with a hint to merge.
+  - **Merge** (branch icon): pick the name to keep. Every entry moves across, and a split that had both names ends up with one combined line. The old name disappears.
+  - **Remove** (bin) works only for names on no entries; otherwise merge instead.
 
 ---
 
@@ -177,8 +220,15 @@ Column names are matched loosely ("Description", "Amount (naira)", "Paid to" all
   - Filters: search (description, vendor, reference), category (only that tab's categories), branch, and a date range.
   - Under the list: the number of entries and their total. On **Everything**, the total adds money in and out together; pick a tab for a total that means something.
 
-- [ ] **As the owner, I want to download the books, so that my accountant can work with them.**
-  - **CSV** downloads exactly what the filters show (date, kind, category, title, amount in kobo, branch, method, vendor, reference, notes, recorded by). Needs `reports.export`.
+- [ ] **As the owner, I want to download the books as an Excel file, so that my accountant can work with them.**
+  - **Excel** downloads `kiros-books-<date>.xlsx` with exactly what the filters show (tab, category, branch, dates, search). Needs `reports.export`.
+  - **Entries** sheet: Date (real dates), Category, Description, Amount (₦, in naira), Vendor / paid to, Paid by, Reference, Notes, Branch (by name; blank = whole business), Type, Group, Recorded by. The heading row is frozen and has filter arrows.
+  - An entry split between several vendors or customers comes out as **one row per person** with their own amount (same date, category and description). That way the file adds up correctly and imports back as separate entries.
+  - **Summary** sheet: the filters used and when it was downloaded, totals per category grouped by type, and money in, money out and net.
+  - App orders aren't in this file. Use Sales reports for those, or Analytics for everything together.
+
+- [ ] **As the owner, I want to fix things in Excel and bring them back, so that bulk corrections are quick.**
+  - The Entries sheet uses the same columns as the import template, so a downloaded file can be imported as it is. Importing adds new entries; it doesn't replace the old ones. To correct entries in bulk: download, delete the wrong entries in the app, fix the rows in Excel, and import them.
 
 - [ ] **As the owner, I want an at-a-glance summary, so that I don't have to open analytics for the basics.**
   - The top of **Capital & expenses** shows all-time **Capital put in** (and net of money out), **Spent to date** (and how much on assets), **Revenue to date** and **Estimated cash**. Choosing a branch filter narrows these to that branch.
@@ -267,7 +317,7 @@ Column names are matched loosely ("Description", "Amount (naira)", "Paid to" all
 
 - [ ] **As the owner, I want the funding timeline and my biggest suppliers, so that I can see who I depend on.**
   - **Funding history**: every capital-in and money-out entry in date order, with the running net capital. Only the latest 8 show until you click **Show N earlier**.
-  - **Top vendors this period**: the six vendors you spent most with, and their share of spending.
+  - **Top vendors & customers this period**: the six vendors you spent most with and the six customers who paid you most (other income), each with their share. A split counts only each person's own part.
 
 ---
 
@@ -294,7 +344,7 @@ At the start of each month, for the month that just ended:
 - [ ] Record payment-provider and bank charges (**Bank, POS & payment fees**); the app doesn't take these off automatically.
 - [ ] Open **Analytics → Custom** for that month and read **What stands out**.
 - [ ] Check **Spending by category** for anything over budget and adjust budgets if the plan has changed.
-- [ ] Download the CSV for the month if your accountant wants it.
+- [ ] Download the month as Excel (Capital & expenses → pick the dates → **Excel**) if your accountant wants it.
 
 ---
 
@@ -304,7 +354,7 @@ Use this on a test restaurant (or a staging copy), not your live books. It gives
 
 **1. Set a budget:** Ingredients & stock = 300,000 a month.
 
-**2. Record these entries (or import them as one CSV):**
+**2. Record these entries.** The quickest way: download the Excel template, copy the 8 rows from its **Example** sheet into the **Entries** sheet (they're the same rows as below), save, and import the file.
 
 | Date | Kind | Category | Description | Amount |
 | --- | --- | --- | --- | --- |
@@ -316,18 +366,6 @@ Use this on a test restaurant (or a staging copy), not your live books. It gives
 | 31 Jan 2025 | Expense | Salaries & wages | January pay | 300,000 |
 | 31 Jan 2025 | Other income | Walk-in / offline sales | January counter sales | 1,200,000 |
 | 31 Jan 2025 | Money out | Owner's drawings | Owner's draw | 100,000 |
-
-```csv
-date,category,title,amount
-2025-01-02,Owner's investment,Savings to start,5000000
-2025-01-05,Equipment & tools,Fryer and freezer,1200000
-2025-01-06,Rent,January rent,250000
-2025-01-10,Ingredients & stock,Market runs,350000
-2025-01-12,Packaging,Takeaway packs,50000
-2025-01-31,Salaries & wages,January pay,300000
-2025-01-31,Walk-in / offline sales,January counter sales,1200000
-2025-01-31,Owner's drawings,Owner's draw,100000
-```
 
 **3. Open Analytics → Custom → 1 Jan 2025 to 31 Jan 2025, All branches.** You should see:
 
@@ -357,7 +395,8 @@ date,category,title,amount
 - [ ] Delete the drawings entry → Estimated cash becomes ₦4,050,000, and the deletion appears in the audit log.
 - [ ] Edit the rent to 450,000 → Operating profit drops to ₦50,000 and break-even rises.
 - [ ] Try to record anything dated tomorrow → it's refused.
-- [ ] Import the CSV again with one row's date changed to `2025-02-30` → 7 ready, 1 with problems, and only 7 are added.
+- [ ] In the template's Entries sheet, try typing `30/02/2025` in a Date cell → Excel itself refuses it ("Enter a date like 31/01/2025"). Same for a category that isn't in the list, or an amount of 0.
+- [ ] In a plain Excel sheet of your own (no dropdowns), put the 8 rows under the headings Date, Category, Description, Amount, change one date to the text `30/02/2025`, and import it → 7 ready, 1 with problems showing its Excel row number, and only 7 are added.
 
 ---
 
@@ -394,9 +433,11 @@ date,category,title,amount
 - Dates can be in the past, never in the future.
 - The category must belong to the kind (e.g. Rent is only ever an expense).
 - Branch-limited staff can only file and see entries for their branches.
-- Recording, importing, editing, deleting and budgets need `finance.manage`; CSV export needs `reports.export`.
+- Recording, importing, editing, deleting, budgets and the vendors & customers list need `finance.manage`; the Excel download needs `reports.export`.
+- `finance.record_sales` alone allows only: recording other income, and seeing / correcting / deleting the sales that person recorded, on the day they recorded them. Everything else is refused by the server, not just hidden.
+- In a split, the lines must add up to the total, each needs a name and an amount, and a name can appear only once.
 - Every change is written to the audit log; deleted entries can be traced there.
-- Imports: up to 1,000 rows and 2 MB per file; all rows are saved together or none.
+- Imports: Excel (.xlsx) or rows pasted from Excel; up to 1,000 rows and 5 MB per file; all rows are saved together or none.
 
 ---
 
@@ -411,4 +452,6 @@ These aren't covered yet. Decide them before relying on the numbers for anything
 5. **Budgets** are per category for the whole business, not per branch.
 6. **Stock on hand** isn't tracked, so food cost is based on what was bought in the period, not what was used.
 7. **Estimated cash** is only as good as what's recorded. It isn't a bank balance, so compare it with the bank statement each month.
-8. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.
+8. **Splits in Excel.** An imported row has one vendor or customer. A split entry is imported as one row per person, so it becomes separate entries (the totals are the same). Splitting can be done in the app.
+9. **Cashier corrections after the day** have to be done by a manager in Capital & expenses. Should cashiers get a longer window?
+10. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.

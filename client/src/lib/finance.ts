@@ -84,22 +84,13 @@ export function parseCsv(text: string): string[][] {
 
 export const IMPORT_COLUMNS = ["date", "kind", "category", "title", "amount", "vendor", "method", "reference", "notes", "branch"] as const
 
-export const IMPORT_TEMPLATE = [
-  IMPORT_COLUMNS.join(","),
-  "2025-01-05,capital,Owner's investment,Savings put in to start,2500000,Founder,transfer,,,",
-  "2025-01-10,expense,Equipment & tools,Industrial blender and fryer,850000,Kitchen Pro Ltd,transfer,INV-2231,,",
-  "2025-02-01,expense,Rent,February rent,300000,Landlord,transfer,,,Lekki",
-  "2025-02-03,expense,Ingredients & stock,Market run,145000,Mile 12 market,cash,,,",
-  "2025-02-28,income,Walk-in / offline sales,February counter sales,620000,,cash,,,",
-].join("\n")
-
 const HEADER_ALIASES: Record<string, (typeof IMPORT_COLUMNS)[number]> = {
   date: "date", day: "date", "entry date": "date", "transaction date": "date",
   kind: "kind", type: "kind",
   category: "category", "expense category": "category",
   title: "title", description: "title", item: "title", details: "title", narration: "title",
   amount: "amount", "amount (₦)": "amount", "amount (naira)": "amount", naira: "amount", value: "amount", cost: "amount",
-  vendor: "vendor", party: "vendor", payee: "vendor", supplier: "vendor", "paid to": "vendor", from: "vendor",
+  vendor: "vendor", party: "vendor", payee: "vendor", supplier: "vendor", "paid to": "vendor", "vendor / paid to": "vendor", "vendor/paid to": "vendor", from: "vendor",
   method: "method", "payment method": "method", "paid by": "method",
   reference: "reference", ref: "reference", receipt: "reference",
   notes: "notes", note: "notes", comment: "notes",
@@ -113,9 +104,14 @@ const KIND_ALIASES: Record<string, FinanceKind> = {
   withdrawal: "withdrawal", "money out": "withdrawal", drawing: "withdrawal", drawings: "withdrawal",
 }
 
-/** Accepts 2025-02-01, 01/02/2025 (day first, as in Nigeria) and 1 Feb 2025. */
+/** Accepts 2025-02-01, 01/02/2025 (day first, as in Nigeria), 1 Feb 2025, and Excel's day numbers (45658). */
 export function parseDateLoose(v: string): string | null {
   const s = v.trim()
+  // A date cell Excel stored as a plain number (days since 30 Dec 1899): 20000 ≈ 1954, 80000 ≈ 2119.
+  if (/^\d{5}(\.\d+)?$/.test(s) && +s > 20000 && +s < 80000) {
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(+s) * 86_400_000)
+    return valid(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+  }
   let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
   if (m) return valid(+m[1], +m[2], +m[3])
   m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/)
@@ -137,8 +133,14 @@ export interface ImportRow {
   raw: string[]
 }
 
+/** Pasted or CSV text → rows to import. */
 export function buildImport(text: string, categories: FinanceCategory[], branches: Array<{ id: string; name: string }>, today: string): { rows: ImportRow[]; missing: string[] } {
-  const table = parseCsv(text)
+  return buildImportFromTable(parseCsv(text), categories, branches, today)
+}
+
+/** Rows of cells (header first, e.g. read from an Excel sheet) → rows to import, each valid or with the reason it isn't. */
+/** `lines`: the source row number of each table row (Excel rows, when blank rows were skipped). */
+export function buildImportFromTable(table: string[][], categories: FinanceCategory[], branches: Array<{ id: string; name: string }>, today: string, lines?: number[]): { rows: ImportRow[]; missing: string[] } {
   if (table.length === 0) return { rows: [], missing: ["date", "category", "amount"] }
   const header = table[0].map((h) => HEADER_ALIASES[norm(h)] ?? null)
   const col = (name: (typeof IMPORT_COLUMNS)[number]) => header.indexOf(name)
@@ -150,7 +152,7 @@ export function buildImport(text: string, categories: FinanceCategory[], branche
   const get = (r: string[], name: (typeof IMPORT_COLUMNS)[number]) => (col(name) >= 0 ? (r[col(name)] ?? "").trim() : "")
 
   const rows = table.slice(1).map((r, i): ImportRow => {
-    const line = i + 2
+    const line = lines?.[i + 1] ?? i + 2
     const fail = (error: string): ImportRow => ({ line, entry: null, error, raw: r })
     const date = parseDateLoose(get(r, "date"))
     if (!date) return fail(`Date "${get(r, "date")}" isn't a date`)

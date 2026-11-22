@@ -52,6 +52,7 @@ const CustomersPage = lazy(() => import("@/pages/admin/CustomersPage"))
 const ReportsPage = lazy(() => import("@/pages/admin/ReportsPage"))
 const AnalyticsPage = lazy(() => import("@/pages/admin/AnalyticsPage"))
 const FinancePage = lazy(() => import("@/pages/admin/FinancePage"))
+const SalesEntryPage = lazy(() => import("@/pages/admin/SalesEntryPage"))
 const StaffPage = lazy(() => import("@/pages/admin/StaffPage"))
 const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"))
 const AuditLogPage = lazy(() => import("@/pages/admin/AuditLogPage"))
@@ -117,6 +118,7 @@ export default function App() {
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="finance" element={<FinancePage />} />
               </Route>
+              <Route element={<ProtectedRoute anyOf={["finance.record_sales", "finance.manage"]} />}><Route path="sales" element={<SalesEntryPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["staff.view"]} />}><Route path="staff" element={<StaffPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["settings.view"]} />}><Route path="settings" element={<SettingsPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["audit.view"]} />}><Route path="audit" element={<AuditLogPage />} /></Route>

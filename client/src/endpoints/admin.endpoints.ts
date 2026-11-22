@@ -36,7 +36,7 @@ import type {
   StaffInvite,
 } from "@/types/admin.types"
 import type { ConversationView, ChatMessage, OrderDetail, OrderStatus, OrderSummary } from "@/types/store.types"
-import type { FinanceAnalytics, FinanceBudget, FinanceCatalog, FinanceEntry, FinanceEntryInput } from "@/types/finance.types"
+import type { FinanceAnalytics, FinanceBudget, FinanceCatalog, FinanceEntry, FinanceEntryInput, FinanceParty } from "@/types/finance.types"
 
 const A = "/api/v1/admin"
 type Body = Record<string, unknown>
@@ -202,7 +202,7 @@ export const PlatformEndpoints = {
 export const FinanceEndpoints = {
   categories: () => wrapCall<FinanceCatalog>("GET", `${A}/finance/categories`),
   entries: (params: Body) => wrapCall<FinanceEntry[]>("GET", `${A}/finance/entries`, params),
-  exportEntries: (params: Body, filename: string) => downloadFile(`${A}/finance/entries`, filename, { ...params, format: "csv" }),
+  exportEntries: (params: Body, filename: string) => downloadFile(`${A}/finance/entries`, filename, { ...params, format: "xlsx" }),
   create: (body: FinanceEntryInput) => wrapCall<FinanceEntry>("POST", `${A}/finance/entries`, body as unknown as Body),
   importMany: (entries: FinanceEntryInput[]) => wrapCall<{ imported: number }>("POST", `${A}/finance/entries/import`, { entries }, { timeoutMs: 60_000 }),
   update: (id: string, body: Partial<FinanceEntryInput>) => wrapCall<FinanceEntry>("PUT", `${A}/finance/entries/${id}`, body as Body),
@@ -210,4 +210,9 @@ export const FinanceEndpoints = {
   budgets: () => wrapCall<FinanceBudget[]>("GET", `${A}/finance/budgets`),
   setBudgets: (budgets: FinanceBudget[]) => wrapCall<FinanceBudget[]>("PUT", `${A}/finance/budgets`, { budgets }),
   analytics: (params: Body) => wrapCall<FinanceAnalytics>("GET", `${A}/finance/analytics`, params),
+  parties: () => wrapCall<FinanceParty[]>("GET", `${A}/finance/parties`),
+  createParty: (body: { name: string; phone?: string | null; notes?: string | null }) => wrapCall<FinanceParty>("POST", `${A}/finance/parties`, body),
+  updateParty: (id: string, body: { name?: string; phone?: string | null; notes?: string | null }) => wrapCall<FinanceParty>("PUT", `${A}/finance/parties/${id}`, body),
+  mergeParty: (id: string, intoId: string) => wrapCall<{ moved: number }>("POST", `${A}/finance/parties/${id}/merge`, { intoId }),
+  removeParty: (id: string) => wrapCall<null>("DELETE", `${A}/finance/parties/${id}`),
 }

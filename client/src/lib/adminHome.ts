@@ -31,6 +31,6 @@ export function adminHome(permissions: readonly string[]): string {
   if (can("orders.deliver")) return "/admin/deliveries"
   if (can("orders.view")) return "/admin/orders"
   // Anything else: the first page in the sidebar they're allowed into, or their own account page.
-  const first = NAV_SECTIONS.flatMap((s) => s.items).find((i) => !i.platform && i.anyOf?.some(can))
+  const first = NAV_SECTIONS.flatMap((s) => s.items).find((i) => !i.platform && i.anyOf?.some(can) && !(i.hideIf && can(i.hideIf)))
   return first?.to ?? "/admin/me"
 }

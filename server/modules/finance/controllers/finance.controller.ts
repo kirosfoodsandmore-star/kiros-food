@@ -1,7 +1,7 @@
 import { actorOf, handle, input, Paged } from "../../../shared/http/handler";
 import { FinanceService } from "../services/finance.service";
 import { FinanceAnalyticsService } from "../services/financeAnalytics.service";
-import { analyticsSchema, createEntrySchema, entryIdSchema, importEntriesSchema, listEntriesSchema, setBudgetsSchema, updateEntrySchema } from "../validators/finance.schema";
+import { analyticsSchema, createEntrySchema, createPartySchema, entryIdSchema, importEntriesSchema, listEntriesSchema, mergePartySchema, partyIdSchema, setBudgetsSchema, updateEntrySchema, updatePartySchema } from "../validators/finance.schema";
 
 export class FinanceController {
   static categories = handle("Finance categories", async () => FinanceService.Instance.categories());
@@ -20,5 +20,16 @@ export class FinanceController {
   static remove = handle("Entry deleted", (req) => FinanceService.Instance.remove(actorOf(req), input(req, entryIdSchema).params.id));
   static budgets = handle("Budgets fetched", (req) => FinanceService.Instance.budgets(actorOf(req)));
   static setBudgets = handle("Budgets saved", (req) => FinanceService.Instance.setBudgets(actorOf(req), input(req, setBudgetsSchema).body.budgets));
+  static parties = handle("Vendors & customers", (req) => FinanceService.Instance.listParties(actorOf(req)));
+  static createParty = handle("Added", (req) => FinanceService.Instance.createParty(actorOf(req), input(req, createPartySchema).body), 201);
+  static updateParty = handle("Saved", (req) => {
+    const { params, body } = input(req, updatePartySchema);
+    return FinanceService.Instance.updateParty(actorOf(req), params.id, body);
+  });
+  static mergeParty = handle("Merged", (req) => {
+    const { params, body } = input(req, mergePartySchema);
+    return FinanceService.Instance.mergeParty(actorOf(req), params.id, body.intoId);
+  });
+  static removeParty = handle("Removed", (req) => FinanceService.Instance.removeParty(actorOf(req), input(req, partyIdSchema).params.id));
   static analytics = handle("Business analytics", (req) => FinanceAnalyticsService.Instance.analytics(actorOf(req), input(req, analyticsSchema).query));
 }

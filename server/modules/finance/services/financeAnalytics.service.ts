@@ -1,5 +1,6 @@
 // Business analytics: storefront sales and the finance ledger together, over any range (or all time), with the
 // previous period for comparison, a running cash line, restaurant KPIs, busy times and plain-language insights.
+import { assertPermission } from "../../../shared/access/can";
 import { branchScope } from "../../../shared/access/scope";
 import type { Actor } from "../../../shared/types/actor";
 import { addDays, resolveRange, todayIn } from "../../../shared/utils/dates";
@@ -22,6 +23,7 @@ export class FinanceAnalyticsService {
   ) {}
 
   async analytics(actor: Actor, q: AnalyticsQuery) {
+    assertPermission(actor, "finance.view");
     const org = await this.organizations.findById(actor.organizationId);
     const timezone = org?.timezone ?? "Africa/Lagos";
     const fmt = (kobo: number) => formatMoney(kobo, org?.currencySymbol ?? "₦", org?.currencyDecimals ?? 0);
@@ -40,7 +42,7 @@ export class FinanceAnalyticsService {
     const scope = { organizationId, branchIds, from, to, timezone };
     const prevScope = { ...scope, ...prev };
 
-    const [ledger, orders, prevLedger, prevOrders, allLedger, allRevenue, heat, vendors, funding, ledgerBranches, orderBranches, budgets, branchList] = await Promise.all([
+    const [ledger, orders, prevLedger, prevOrders, allLedger, allRevenue, heat, vendors, customers, funding, ledgerBranches, orderBranches, budgets, branchList] = await Promise.all([
       this.repo.ledgerBuckets(scope, granularity),
       this.repo.orderBuckets(scope, granularity),
       this.repo.ledgerBuckets(prevScope, "month"),
@@ -48,7 +50,8 @@ export class FinanceAnalyticsService {
       this.repo.ledgerTotalsUpTo(organizationId, branchIds, to),
       this.repo.orderRevenueUpTo({ organizationId, branchIds, to, timezone }),
       this.repo.heatmap(scope),
-      this.repo.topParties(scope),
+      this.repo.topParties(scope, "expense"),
+      this.repo.topParties(scope, "income"),
       this.repo.fundingHistory(organizationId, branchIds, to),
       this.repo.ledgerByBranch(scope),
       this.repo.ordersByBranch(scope),
@@ -200,6 +203,7 @@ export class FinanceAnalyticsService {
       branches,
       heatmap: heat,
       topVendors: vendors,
+      topCustomers: customers,
       funding: fundingHistory,
       insights,
       hasLedger: allLedger.length > 0,

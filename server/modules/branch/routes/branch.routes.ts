@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { publicRoute, requirePermission } from "../../../shared/access/can";
+import { publicRoute, requireAny, requirePermission } from "../../../shared/access/can";
 import { authMiddleware } from "../../../shared/middleware/auth.middleware";
 import { validate } from "../../../shared/middleware/validate.middleware";
 import { BranchController } from "../controllers/branch.controller";
@@ -24,7 +24,8 @@ import {
 
 /** /api/v1/admin/branches */
 export const adminBranchRouter = Router();
-adminBranchRouter.get("/", authMiddleware, requirePermission("branches.view"), validate(listBranchesQuerySchema), BranchController.list);
+// Sales-only staff need their own branches to file a sale against (the list is limited to the caller's branches).
+adminBranchRouter.get("/", authMiddleware, requireAny("branches.view", "finance.record_sales"), validate(listBranchesQuerySchema), BranchController.list);
 adminBranchRouter.post("/", authMiddleware, requirePermission("branches.edit"), validate(createBranchSchema), BranchController.create);
 adminBranchRouter.post("/bulk-delete", authMiddleware, requirePermission("branches.edit"), validate(bulkDeleteBranchesSchema), BranchController.removeMany);
 adminBranchRouter.get("/:id", authMiddleware, requirePermission("branches.view"), validate(branchIdSchema), BranchController.get);
