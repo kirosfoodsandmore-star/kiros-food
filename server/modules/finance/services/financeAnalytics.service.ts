@@ -8,7 +8,7 @@ import { formatMoney } from "../../../shared/utils/money";
 import { BranchService } from "../../branch/services/branch.service";
 import { OrganizationRepository } from "../../organization/repositories/organization.repository";
 import { EXPENSE_GROUP_LABELS, EXPENSE_GROUPS, FINANCE_KIND_LABELS } from "../catalog/finance.catalog";
-import { autoGranularity, bucketList, buildInsights, monthsIn, previousRange, ratio, totalsOf, type LedgerAmount } from "../domain/analytics";
+import { autoGranularity, bucketList, budgetMonthsFor, buildInsights, monthsIn, previousRange, ratio, totalsOf, type LedgerAmount } from "../domain/analytics";
 import { FinanceRepository } from "../repositories/finance.repository";
 import { SaleItemRepository } from "../repositories/saleItem.repository";
 import { CategoryService } from "./category.service";
@@ -140,7 +140,7 @@ export class FinanceAnalyticsService {
         amount: expNow.get(category) ?? 0,
         previous: expPrev.get(category) ?? 0,
         budget: budgetOf.get(category) ?? null,
-        budgetForPeriod: budgetOf.has(category) ? Math.round(budgetOf.get(category)! * months) : null,
+        budgetForPeriod: budgetOf.has(category) ? Math.round(budgetOf.get(category)! * budgetMonthsFor(months)) : null,
         share: ratio(expNow.get(category) ?? 0, current.expenses),
       }))
       .filter((e) => e.amount > 0 || e.previous > 0 || e.budget)
