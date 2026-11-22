@@ -395,10 +395,13 @@ function BestSellers({ rows, fmt }: { rows: FinanceAnalytics["bestSellers"]; fmt
 function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnType<typeof useAdminCurrency> }) {
   const rows = data.expenseByCategory
   const max = Math.max(1, ...rows.map((r) => Math.max(r.amount, r.budgetForPeriod ?? 0)))
+  // Budgets are set per month; the figure shown is scaled to the days in range, so say so (a 30-day range is a bit under a month).
+  const days = differenceInCalendarDays(parseISO(data.range.to), parseISO(data.range.from)) + 1
+  const dayLabel = `${days} ${days === 1 ? "day" : "days"}`
   return (
     <Card className="min-w-0">
       <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-        <div><CardTitle>Spending by category</CardTitle><p className="mt-1 text-sm text-muted-foreground">Against the period before and your budget (the tick mark).</p></div>
+        <div><CardTitle>Spending by category</CardTitle><p className="mt-1 text-sm text-muted-foreground">Against the period before and your budget (the tick mark). Monthly budgets are scaled to the {dayLabel} shown.</p></div>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? <p className="text-sm text-muted-foreground">No expenses in this range.</p> : (
@@ -416,11 +419,12 @@ function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnT
                   </div>
                   <div className="relative mt-1 h-2 rounded-full bg-muted">
                     <div className="h-2 rounded-full" style={{ width: `${(r.amount / max) * 100}%`, background: C2 }} />
-                    {r.budgetForPeriod ? <span className="absolute -top-0.5 h-3 w-0.5 rounded bg-foreground/70" style={{ left: `calc(${(r.budgetForPeriod / max) * 100}% - 1px)` }} title="Budget for this period" /> : null}
+                    {r.budgetForPeriod ? <span className="absolute -top-0.5 h-3 w-0.5 rounded bg-foreground/70" style={{ left: `calc(${(r.budgetForPeriod / max) * 100}% - 1px)` }} title={`Monthly budget scaled to ${dayLabel}`} /> : null}
                   </div>
                   <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                     {d !== null ? <span>{d >= 0 ? "▲" : "▼"} {pct(Math.abs(d))} vs before</span> : r.previous === 0 && r.amount > 0 ? <span>new this period</span> : null}
                     {r.budgetForPeriod !== null ? <span className={over ? "font-medium text-destructive" : undefined}>{over ? <><TriangleAlert className="mr-0.5 inline size-3" />Over budget by <Money value={r.amount - r.budgetForPeriod} fmt={fmt} /></> : <>Budget <Money value={r.budgetForPeriod} fmt={fmt} /></>}</span> : null}
+                    {r.budgetForPeriod !== null && r.budget !== null ? <span>for {dayLabel} · <Money value={r.budget} fmt={fmt} />/month</span> : null}
                   </p>
                 </li>
               )
