@@ -412,9 +412,10 @@ function ExpenseCategories({ data, fmt }: { data: FinanceAnalytics; fmt: ReturnT
           <ul className="space-y-3 lg:max-h-[360px] lg:overflow-y-auto lg:pr-1">
             {rows.map((r) => {
               const d = change(r.amount, r.previous)
-              // 5% leeway (as the server's insights use): a monthly bill landing just inside the range isn't "over".
+              // The server already scaled the budget to the range (a month-long range gets the full monthly budget), so any
+              // spend above it is over.
               const planned = comparable ? r.budgetForPeriod : null
-              const overBy = planned !== null && r.amount > planned * 1.05 ? r.amount - planned : 0
+              const overBy = planned !== null && r.amount > planned ? r.amount - planned : 0
               return (
                 <li key={r.category}>
                   <div className="flex items-baseline justify-between gap-2 text-sm">

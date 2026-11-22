@@ -131,6 +131,15 @@ export function previousRange(from: string, to: string): { from: string; to: str
 /** Shortest range (in months, about 28 days) over which spending is judged against a monthly budget. */
 export const MIN_MONTHS_FOR_BUDGET_CHECK = 0.9;
 
+/**
+ * How many months of budget a range gets. A range of about a month (28-33 days: a 30-day preset, or a calendar month)
+ * counts as exactly one, so a fully spent monthly budget reads as on budget rather than a day or two over a prorated one.
+ * Longer ranges scale (90 days = about 3 months).
+ */
+export function budgetMonthsFor(months: number): number {
+  return months >= MIN_MONTHS_FOR_BUDGET_CHECK && months <= 1.1 ? 1 : months;
+}
+
 /** Months spanned by a range (fractional, at least one day's worth). */
 export function monthsIn(from: string, to: string): number {
   return Math.max(daysBetween(from, to), 1) / 30.4375;
@@ -203,11 +212,12 @@ export function buildInsights(i: InsightInput): Insight[] {
 
   // Budgets are monthly. Under about a month a bill like rent lands in one range and not the next, so a "share of a month"
   // comparison would raise false alarms; the analytics page makes the same cut (AnalyticsPage ExpenseCategories).
+  const budgetMonths = budgetMonthsFor(i.months);
   const overBudget = (i.months < MIN_MONTHS_FOR_BUDGET_CHECK ? [] : i.expenseByCategory)
-    .filter((e) => e.budget !== null && e.budget > 0 && e.amount > e.budget * i.months * 1.05)
-    .sort((a, b) => b.amount / (b.budget! * i.months) - a.amount / (a.budget! * i.months));
+    .filter((e) => e.budget !== null && e.budget > 0 && e.amount > e.budget * budgetMonths)
+    .sort((a, b) => b.amount / (b.budget! * budgetMonths) - a.amount / (a.budget! * budgetMonths));
   for (const e of overBudget.slice(0, 2)) {
-    const planned = Math.round(e.budget! * i.months);
+    const planned = Math.round(e.budget! * budgetMonths);
     out.push({ tone: "warning", title: `${i.categoryLabel(e.category)} is over budget`, detail: `${fmt(e.amount)} spent against ${fmt(planned)} planned for this period (${pct(e.amount / planned - 1)} over).` });
   }
 
