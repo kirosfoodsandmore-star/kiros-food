@@ -30,6 +30,8 @@ import { OrganizationEntity } from "../../modules/organization/entities/organiza
 import { BankAccountEntity } from "../../modules/payment/entities/bankAccount.entity";
 import { PaymentEntity } from "../../modules/payment/entities/payment.entity";
 import { PaymentSettingsEntity } from "../../modules/payment/entities/paymentSettings.entity";
+import { FinanceBudgetEntity } from "../../modules/finance/entities/financeBudget.entity";
+import { FinanceEntryEntity } from "../../modules/finance/entities/financeEntry.entity";
 import { PromoCodeEntity } from "../../modules/promo/entities/promoCode.entity";
 import { StaffInviteEntity } from "../../modules/user/entities/staffInvite.entity";
 import { UserEntity } from "../../modules/user/entities/user.entity";
@@ -72,6 +74,9 @@ export const ALL_ENTITIES: EntitySchema[] = [
   PaymentSettingsEntity,
   BankAccountEntity,
   PaymentEntity,
+  // Finance (the business's own books)
+  FinanceEntryEntity,
+  FinanceBudgetEntity,
   // Chat
   ChatConversationEntity,
 ];

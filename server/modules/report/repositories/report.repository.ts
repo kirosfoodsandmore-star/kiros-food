@@ -30,7 +30,7 @@ export interface SalesTotals {
 }
 
 /** Completed-or-active paid orders count as sales; cancelled and refunded never do. */
-const PAID = `o.status IN ('paid','accepted','preparing','ready','out_for_delivery','completed')`;
+export const PAID = `o.status IN ('paid','accepted','preparing','ready','out_for_delivery','completed')`;
 
 export class ReportRepository {
   static Instance = new ReportRepository();

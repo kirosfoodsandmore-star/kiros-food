@@ -55,6 +55,10 @@ export const PERMISSIONS = [
   { code: "reports.view", category: "Reports", label: "See sales reports" },
   { code: "reports.export", category: "Reports", label: "Export reports to CSV" },
 
+  // ── Finance (owner only by default) ────────────────────────────────────────
+  { code: "finance.view", category: "Finance", label: "See capital, expenses, other income, budgets and business analytics", ownerOnlyDefault: true },
+  { code: "finance.manage", category: "Finance", label: "Record, import and edit capital, expenses, income and budgets", ownerOnlyDefault: true },
+
   // ── Staff (owner only by default) ──────────────────────────────────────────
   { code: "staff.view", category: "Staff", label: "See staff and pending invites" },
   { code: "staff.manage", category: "Staff", label: "Invite staff, assign roles and branches, deactivate; create custom roles", ownerOnlyDefault: true },

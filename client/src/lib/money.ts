@@ -7,8 +7,9 @@ export interface CurrencyFormat {
 const DEFAULT: CurrencyFormat = { currencySymbol: "₦", currencyDecimals: 0 }
 
 export function formatMoney(minor: number, fmt: CurrencyFormat = DEFAULT): string {
-  const major = minor / 100
-  return `${fmt.currencySymbol}${major.toLocaleString("en-NG", { minimumFractionDigits: fmt.currencyDecimals, maximumFractionDigits: fmt.currencyDecimals })}`
+  // Losses and negative balances read "-₦1,200", not "₦-1,200".
+  const major = Math.abs(minor) / 100
+  return `${minor < 0 ? "-" : ""}${fmt.currencySymbol}${major.toLocaleString("en-NG", { minimumFractionDigits: fmt.currencyDecimals, maximumFractionDigits: fmt.currencyDecimals })}`
 }
 
 /** Form input: naira string → kobo integer. */

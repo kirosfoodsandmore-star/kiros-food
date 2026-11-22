@@ -1,0 +1,120 @@
+// The business's own books (capital, expenses, off-app income, money out) and the analytics built on them.
+// Mirrors server/modules/finance. Money is kobo; ratios are 0–1 or null.
+
+export type FinanceKind = "capital" | "expense" | "income" | "withdrawal"
+export type ExpenseGroup = "cost_of_sales" | "operating" | "capex"
+export type Granularity = "day" | "week" | "month"
+
+export interface FinanceCategory {
+  key: string
+  kind: FinanceKind
+  label: string
+  group?: ExpenseGroup
+}
+
+export interface FinanceCatalog {
+  kinds: Array<{ key: FinanceKind; label: string }>
+  groups: Array<{ key: ExpenseGroup; label: string }>
+  paymentMethods: string[]
+  categories: FinanceCategory[]
+}
+
+export interface FinanceEntry {
+  id: string
+  branchId: string | null
+  kind: FinanceKind
+  category: string
+  title: string
+  amount: number
+  entryDate: string
+  paymentMethod: string | null
+  party: string | null
+  reference: string | null
+  notes: string | null
+  createdBy: string | null
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FinanceEntryInput {
+  kind: FinanceKind
+  category: string
+  title: string
+  amount: number
+  entryDate: string
+  branchId?: string | null
+  paymentMethod?: string | null
+  party?: string | null
+  reference?: string | null
+  notes?: string | null
+}
+
+export interface FinanceBudget {
+  category: string
+  monthlyAmount: number
+}
+
+export interface PeriodTotals {
+  appRevenue: number
+  otherIncome: number
+  revenue: number
+  costOfSales: number
+  operating: number
+  capex: number
+  expenses: number
+  salaries: number
+  capitalIn: number
+  withdrawals: number
+  grossProfit: number
+  operatingProfit: number
+  netCashFlow: number
+  orders: number
+  averageOrderValue: number
+  grossMargin: number | null
+  operatingMargin: number | null
+  foodCostRatio: number | null
+  labourRatio: number | null
+  primeCostRatio: number | null
+}
+
+export interface SeriesPoint {
+  bucket: string
+  appRevenue: number
+  otherIncome: number
+  revenue: number
+  costOfSales: number
+  operating: number
+  capex: number
+  expenses: number
+  capitalIn: number
+  withdrawals: number
+  operatingProfit: number
+  netCashFlow: number
+  orders: number
+  averageOrderValue: number
+  customers: number
+  newCustomers: number
+  cash: number
+  cumulativeProfit: number
+}
+
+export type InsightTone = "good" | "warning" | "critical" | "info"
+
+export interface FinanceAnalytics {
+  range: { from: string; to: string; granularity: Granularity; timezone: string; allTime: boolean; previousFrom: string; previousTo: string; firstActivity: string | null; months: number }
+  totals: PeriodTotals
+  previous: PeriodTotals
+  lifetime: { capitalInvested: number; withdrawals: number; netCapital: number; revenue: number; expenses: number; assets: number; operatingProfit: number; cashPosition: number; paybackRatio: number | null }
+  kpis: { monthlyBurn: number; averageMonthlyRevenue: number; runwayMonths: number | null; breakEvenMonthlyRevenue: number | null; openingCash: number }
+  series: SeriesPoint[]
+  expenseByCategory: Array<{ category: string; label: string; group: ExpenseGroup; amount: number; previous: number; budget: number | null; budgetForPeriod: number | null; share: number | null }>
+  expenseByGroup: Array<{ group: ExpenseGroup; label: string; amount: number }>
+  revenueSources: Array<{ key: string; label: string; amount: number }>
+  branches: Array<{ branchId: string | null; name: string; orders: number; revenue: number; expenses: number; capex: number; operatingProfit: number; operatingMargin: number | null }>
+  heatmap: Array<{ weekday: number; hour: number; orders: number; revenue: number }>
+  topVendors: Array<{ party: string; amount: number; entries: number }>
+  funding: Array<{ id: string; date: string; kind: "capital" | "withdrawal"; kindLabel: string; category: string; categoryLabel: string; title: string; party: string | null; amount: number; netCapital: number }>
+  insights: Array<{ tone: InsightTone; title: string; detail: string }>
+  hasLedger: boolean
+}

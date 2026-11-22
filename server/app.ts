@@ -21,6 +21,7 @@ import { contactMessageSchema } from "./modules/organization/validators/contact.
 import { slugParams } from "./modules/organization/validators/organization.schema";
 import { adminPaymentRouter, paymentSettingsRouter, webhookRouter } from "./modules/payment/routes/payment.routes";
 import platformRoutes from "./modules/platform/routes/platform.routes";
+import financeRoutes from "./modules/finance/routes/finance.routes";
 import promoRoutes from "./modules/promo/routes/promo.routes";
 import { dashboardRouter, reportRouter } from "./modules/report/routes/report.routes";
 import staffRoutes from "./modules/user/routes/staff.routes";
@@ -101,6 +102,7 @@ export function createApp(): Application {
   admin.use("/chat", adminChatRouter);
   admin.use("/reports", reportRouter);
   admin.use("/dashboard", dashboardRouter);
+  admin.use("/finance", financeRoutes);
   admin.use("/audit-logs", auditRoutes);
   v1.use("/admin", admin);
 

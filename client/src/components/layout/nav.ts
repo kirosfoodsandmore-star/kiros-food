@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bike, Building2, ClipboardList, CreditCard, Globe, LayoutDashboard, ListChecks, Mail, MessageSquare, PackageX, Settings, ShieldCheck, Tag, UserCog, Users, UtensilsCrossed } from "lucide-react"
+import { Activity, BarChart3, Bike, Building2, ClipboardList, CreditCard, Globe, LayoutDashboard, ListChecks, Mail, MessageSquare, PackageX, Settings, ShieldCheck, Tag, TrendingUp, UserCog, Users, UtensilsCrossed, Wallet } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export interface NavItem {
@@ -54,7 +54,9 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/admin/branches", label: "Branches", icon: Building2, anyOf: ["branches.view"], cy: "nav-branches" },
       { to: "/admin/customers", label: "Customers", icon: Users, anyOf: ["customers.view"], cy: "nav-customers" },
-      { to: "/admin/reports", label: "Reports", icon: BarChart3, anyOf: ["reports.view"], cy: "nav-reports" },
+      { to: "/admin/reports", label: "Sales reports", icon: BarChart3, anyOf: ["reports.view"], cy: "nav-reports" },
+      { to: "/admin/analytics", label: "Analytics", icon: TrendingUp, anyOf: ["finance.view"], cy: "nav-analytics" },
+      { to: "/admin/finance", label: "Capital & expenses", icon: Wallet, anyOf: ["finance.view"], cy: "nav-finance" },
     ],
   },
   {

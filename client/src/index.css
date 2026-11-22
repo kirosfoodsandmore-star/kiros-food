@@ -33,6 +33,11 @@
   --warning: #c77d0a;
   --info: #2b5fb8;
 
+  /* Chart series (validated colour-blind-safe order; keep the order): revenue, costs, profit. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+
   /* Showcase surfaces (storefront hero/footer): deep ink in both themes. */
   --ink: #0b1322;
   --ink-foreground: #f2f4f8;
@@ -62,6 +67,9 @@
   --success: #45c272;
   --warning: #f0b43c;
   --info: #6c9cf0;
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
 }
 
 @theme inline {
@@ -91,6 +99,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
   --color-ink: var(--ink);
   --color-ink-foreground: var(--ink-foreground);
   --color-gold: var(--gold);

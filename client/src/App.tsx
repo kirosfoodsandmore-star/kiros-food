@@ -50,6 +50,8 @@ const BranchDetailPage = lazy(() => import("@/pages/admin/BranchDetailPage"))
 const PromosPage = lazy(() => import("@/pages/admin/PromosPage"))
 const CustomersPage = lazy(() => import("@/pages/admin/CustomersPage"))
 const ReportsPage = lazy(() => import("@/pages/admin/ReportsPage"))
+const AnalyticsPage = lazy(() => import("@/pages/admin/AnalyticsPage"))
+const FinancePage = lazy(() => import("@/pages/admin/FinancePage"))
 const StaffPage = lazy(() => import("@/pages/admin/StaffPage"))
 const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"))
 const AuditLogPage = lazy(() => import("@/pages/admin/AuditLogPage"))
@@ -111,6 +113,10 @@ export default function App() {
               <Route element={<ProtectedRoute anyOf={["promos.view"]} />}><Route path="promos" element={<PromosPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["customers.view"]} />}><Route path="customers" element={<CustomersPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["reports.view"]} />}><Route path="reports" element={<ReportsPage />} /></Route>
+              <Route element={<ProtectedRoute anyOf={["finance.view"]} />}>
+                <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="finance" element={<FinancePage />} />
+              </Route>
               <Route element={<ProtectedRoute anyOf={["staff.view"]} />}><Route path="staff" element={<StaffPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["settings.view"]} />}><Route path="settings" element={<SettingsPage />} /></Route>
               <Route element={<ProtectedRoute anyOf={["audit.view"]} />}><Route path="audit" element={<AuditLogPage />} /></Route>

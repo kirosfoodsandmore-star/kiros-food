@@ -36,6 +36,7 @@ import type {
   StaffInvite,
 } from "@/types/admin.types"
 import type { ConversationView, ChatMessage, OrderDetail, OrderStatus, OrderSummary } from "@/types/store.types"
+import type { FinanceAnalytics, FinanceBudget, FinanceCatalog, FinanceEntry, FinanceEntryInput } from "@/types/finance.types"
 
 const A = "/api/v1/admin"
 type Body = Record<string, unknown>
@@ -195,4 +196,18 @@ export const PlatformEndpoints = {
   updateSettings: (body: Partial<PlatformSettings>) => wrapCall<PlatformSettings>("PUT", "/api/v1/platform/settings", body),
   suspend: (id: string) => wrapCall<null>("POST", `/api/v1/platform/restaurants/${id}/suspend`),
   unsuspend: (id: string) => wrapCall<null>("POST", `/api/v1/platform/restaurants/${id}/unsuspend`),
+}
+
+/** The business's own books and analytics: /admin/finance (finance.view / finance.manage). */
+export const FinanceEndpoints = {
+  categories: () => wrapCall<FinanceCatalog>("GET", `${A}/finance/categories`),
+  entries: (params: Body) => wrapCall<FinanceEntry[]>("GET", `${A}/finance/entries`, params),
+  exportEntries: (params: Body, filename: string) => downloadFile(`${A}/finance/entries`, filename, { ...params, format: "csv" }),
+  create: (body: FinanceEntryInput) => wrapCall<FinanceEntry>("POST", `${A}/finance/entries`, body as unknown as Body),
+  importMany: (entries: FinanceEntryInput[]) => wrapCall<{ imported: number }>("POST", `${A}/finance/entries/import`, { entries }, { timeoutMs: 60_000 }),
+  update: (id: string, body: Partial<FinanceEntryInput>) => wrapCall<FinanceEntry>("PUT", `${A}/finance/entries/${id}`, body as Body),
+  remove: (id: string) => wrapCall<null>("DELETE", `${A}/finance/entries/${id}`),
+  budgets: () => wrapCall<FinanceBudget[]>("GET", `${A}/finance/budgets`),
+  setBudgets: (budgets: FinanceBudget[]) => wrapCall<FinanceBudget[]>("PUT", `${A}/finance/budgets`, { budgets }),
+  analytics: (params: Body) => wrapCall<FinanceAnalytics>("GET", `${A}/finance/analytics`, params),
 }
