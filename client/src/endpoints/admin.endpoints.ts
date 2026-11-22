@@ -36,7 +36,7 @@ import type {
   StaffInvite,
 } from "@/types/admin.types"
 import type { ConversationView, ChatMessage, OrderDetail, OrderStatus, OrderSummary } from "@/types/store.types"
-import type { FinanceAnalytics, FinanceBudget, FinanceCatalog, FinanceEntry, FinanceEntryInput, FinanceParty } from "@/types/finance.types"
+import type { FinanceAnalytics, FinanceBudget, FinanceCatalog, FinanceEntry, FinanceEntryInput, FinanceParty, SaleMenuItem } from "@/types/finance.types"
 
 const A = "/api/v1/admin"
 type Body = Record<string, unknown>
@@ -181,7 +181,7 @@ export const ChatEndpoints = {
 
 export const ReportEndpoints = {
   sales: (params: Body) => wrapCall<SalesReport>("GET", `${A}/reports/sales`, params),
-  exportSales: (params: Body, filename: string) => downloadFile(`${A}/reports/sales`, filename, { ...params, format: "csv" }),
+  exportSales: (params: Body, filename: string) => downloadFile(`${A}/reports/sales`, filename, { ...params, format: "xlsx" }),
   dashboard: (branchId?: string) => wrapCall<Dashboard>("GET", `${A}/dashboard`, branchId ? { branchId } : undefined),
   audit: (params: Body) => wrapCall<AuditLog[]>("GET", `${A}/audit-logs`, params),
 }
@@ -210,6 +210,8 @@ export const FinanceEndpoints = {
   budgets: () => wrapCall<FinanceBudget[]>("GET", `${A}/finance/budgets`),
   setBudgets: (budgets: FinanceBudget[]) => wrapCall<FinanceBudget[]>("PUT", `${A}/finance/budgets`, { budgets }),
   analytics: (params: Body) => wrapCall<FinanceAnalytics>("GET", `${A}/finance/analytics`, params),
+  /** Menu items to pick from when recording a sale (limited to the menus a branch serves). */
+  saleItems: (branchId?: string) => wrapCall<SaleMenuItem[]>("GET", `${A}/finance/sale-items`, branchId ? { branchId } : undefined),
   parties: () => wrapCall<FinanceParty[]>("GET", `${A}/finance/parties`),
   createParty: (body: { name: string; phone?: string | null; notes?: string | null }) => wrapCall<FinanceParty>("POST", `${A}/finance/parties`, body),
   updateParty: (id: string, body: { name?: string; phone?: string | null; notes?: string | null }) => wrapCall<FinanceParty>("PUT", `${A}/finance/parties/${id}`, body),

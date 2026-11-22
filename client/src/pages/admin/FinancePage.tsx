@@ -29,7 +29,7 @@ import { useBranches } from "@/hooks/useAdminBranches"
 import { useDebouncedSearch } from "@/hooks/useDebounce"
 import { useFinanceAnalytics, useFinanceCatalog, useFinanceEntries, useFinanceMutations } from "@/hooks/useFinance"
 import { useAdminCurrency } from "@/hooks/useFormatters"
-import { KIND_LABELS, KIND_SIGN, PAYMENT_METHOD_LABELS } from "@/lib/finance"
+import { itemsSummary, KIND_LABELS, KIND_SIGN, PAYMENT_METHOD_LABELS } from "@/lib/finance"
 import type { FinanceEntry, FinanceKind } from "@/types/finance.types"
 
 type Tab = "all" | FinanceKind
@@ -65,7 +65,7 @@ export default function FinancePage() {
   const [del, setDel] = useState<FinanceEntry | null>(null)
 
   const cats = useMemo(() => (catalog.data?.categories ?? []).filter((c) => tab === "all" || c.kind === tab), [catalog.data, tab])
-  const branchName = (id: string | null) => (id ? branches?.find((b) => b.id === id)?.name ?? "â€”" : "Whole business")
+  const branchName = (id: string | null) => (id ? branches?.find((b) => b.id === id)?.name ?? "—" : "Whole business")
   const entries = res?.data ?? []
   const empty = !isLoading && entries.length === 0 && !term && tab === "all" && !category && !range.from && !range.to
 
@@ -74,7 +74,7 @@ export default function FinancePage() {
         { label: "Capital put in", value: life.lifetime.capitalInvested, icon: Landmark, hint: life.lifetime.withdrawals ? <>Net of money out: <Money value={life.lifetime.netCapital} fmt={fmt} /></> : "Since the start" },
         { label: "Spent to date", value: life.lifetime.expenses, icon: Receipt, hint: <>incl. <Money value={life.lifetime.assets} fmt={fmt} /> on assets</> },
         { label: "Revenue to date", value: life.lifetime.revenue, icon: ArrowUpRight, hint: "App orders + other income" },
-        { label: "Estimated cash", value: life.lifetime.cashPosition, icon: Wallet, hint: "Capital + revenue âˆ’ spending âˆ’ money out" },
+        { label: "Estimated cash", value: life.lifetime.cashPosition, icon: Wallet, hint: "Capital + revenue − spending − money out" },
       ]
     : null
 
@@ -159,7 +159,8 @@ export default function FinancePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium break-words">{e.title}</p>
-                    {e.party || e.reference ? <p className="text-xs text-muted-foreground break-words">{[e.party, e.reference].filter(Boolean).join(" Â· ")}</p> : null}
+                    {e.items.length ? <p className="text-xs break-words" data-cy="entry-items-summary">{itemsSummary(e.items)}</p> : null}
+                    {e.party || e.reference ? <p className="text-xs text-muted-foreground break-words">{[e.party, e.reference].filter(Boolean).join(" · ")}</p> : null}
                   </div>
                   <span className="inline-flex shrink-0 items-center gap-1 font-medium tabular-nums">
                     {KIND_SIGN[e.kind] > 0 ? <ArrowUpRight className="size-3.5 text-success" aria-label="Money in" /> : <ArrowDownRight className="size-3.5 text-destructive" aria-label="Money out" />}
@@ -171,7 +172,7 @@ export default function FinancePage() {
                     <span>{format(parseISO(e.entryDate), "d MMM yyyy")}</span>
                     <Badge variant={KIND_BADGE[e.kind]}>{KIND_LABELS[e.kind]}</Badge>
                     <span>{catalog.label(e.category)}</span>
-                    <span>Â· {branchName(e.branchId)}</span>
+                    <span>· {branchName(e.branchId)}</span>
                   </div>
                   {manage ? (
                     <div className="flex shrink-0">
@@ -194,7 +195,8 @@ export default function FinancePage() {
                   <TableCell className="whitespace-nowrap text-sm">{format(parseISO(e.entryDate), "d MMM yyyy")}</TableCell>
                   <TableCell>
                     <p className="font-medium">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">{[e.party, e.reference].filter(Boolean).join(" Â· ") || null}</p>
+                    {e.items.length ? <p className="text-xs text-muted-foreground" data-cy="entry-items-summary">{itemsSummary(e.items)}</p> : null}
+                    <p className="text-xs text-muted-foreground">{[e.party, e.reference].filter(Boolean).join(" · ") || null}</p>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -203,7 +205,7 @@ export default function FinancePage() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden text-sm md:table-cell">{branchName(e.branchId)}</TableCell>
-                  <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">{e.paymentMethod ? PAYMENT_METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod : "â€”"}</TableCell>
+                  <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">{e.paymentMethod ? PAYMENT_METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod : "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap font-medium tabular-nums">
                     <span className="inline-flex items-center gap-1">
                       {KIND_SIGN[e.kind] > 0 ? <ArrowUpRight className="size-3.5 text-success" aria-label="Money in" /> : <ArrowDownRight className="size-3.5 text-destructive" aria-label="Money out" />}
@@ -222,8 +224,8 @@ export default function FinancePage() {
           </Table>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-            <span>{res?.meta?.total ?? 0} entries Â· total <Money value={res?.sum ?? 0} fmt={fmt} className="font-medium text-foreground" />{tab === "all" ? " (money in and out combined; filter by kind for a meaningful total)" : ""}</span>
-            {can("finance.view") ? <Link to="/admin/analytics" className="text-primary hover:underline">See the analytics â†’</Link> : null}
+            <span>{res?.meta?.total ?? 0} entries · total <Money value={res?.sum ?? 0} fmt={fmt} className="font-medium text-foreground" />{tab === "all" ? " (money in and out combined; filter by kind for a meaningful total)" : ""}</span>
+            {can("finance.view") ? <Link to="/admin/analytics" className="text-primary hover:underline">See the analytics →</Link> : null}
           </div>
         </>
       )}

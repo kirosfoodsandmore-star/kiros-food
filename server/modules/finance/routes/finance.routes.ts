@@ -12,6 +12,7 @@ import {
   listEntriesSchema,
   mergePartySchema,
   partyIdSchema,
+  saleItemsQuerySchema,
   setBudgetsSchema,
   updateEntrySchema,
   updatePartySchema,
@@ -35,6 +36,7 @@ router.post("/entries/import", authMiddleware, requirePermission("finance.manage
 router.put("/entries/:id", authMiddleware, manageOrSales, validate(updateEntrySchema), FinanceController.update);
 router.delete("/entries/:id", authMiddleware, manageOrSales, validate(entryIdSchema), FinanceController.remove);
 
+router.get("/sale-items", authMiddleware, viewOrSales, validate(saleItemsQuerySchema), FinanceController.saleMenu);
 router.get("/parties", authMiddleware, viewOrSales, FinanceController.parties);
 router.post("/parties", authMiddleware, requirePermission("finance.manage"), validate(createPartySchema), FinanceController.createParty);
 router.put("/parties/:id", authMiddleware, requirePermission("finance.manage"), validate(updatePartySchema), FinanceController.updateParty);

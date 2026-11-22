@@ -86,3 +86,9 @@ export const FINANCE_KIND_LABELS: Record<FinanceKind, string> = {
   income: "Other income",
   withdrawal: "Money out",
 };
+
+/**
+ * Income categories that are SALES (what customers bought at the counter or for an event), as opposed to other income
+ * such as interest or a refund. These are what the Sales reports page adds to online orders.
+ */
+export const COUNTER_SALE_CATEGORIES: readonly string[] = ["offline_sales", "catering"];

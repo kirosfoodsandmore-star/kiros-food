@@ -39,6 +39,43 @@ export interface FinanceEntry {
   updatedAt: string
   /** Who it was paid to / received from, each with their share (adds up to amount). */
   parties: PartyLine[]
+  /** What was sold (offline sales): menu items with quantity and the price charged each. Empty when not itemised. */
+  items: SaleItemLine[]
+}
+
+export interface SaleItemLine {
+  itemId: string | null
+  name: string
+  categoryName: string | null
+  quantity: number
+  /** Kobo each, as charged. */
+  unitPrice: number
+}
+
+/** A line as sent: a menu item by id (name is kept for items since removed from the menu), or a typed name. */
+export interface SaleItemInput {
+  itemId?: string
+  name?: string
+  quantity: number
+  unitPrice: number
+}
+
+/** A menu item offered when recording a sale. */
+export interface SaleMenuItem {
+  id: string
+  name: string
+  price: number
+  category: string
+  menu: string
+}
+
+export interface BestSeller {
+  key: string
+  name: string
+  units: number
+  appUnits: number
+  walkInUnits: number
+  revenue: number
 }
 
 export interface PartyLine {
@@ -76,6 +113,7 @@ export interface FinanceEntryInput {
   paymentMethod?: string | null
   party?: string | null
   parties?: PartyLineInput[]
+  items?: SaleItemInput[]
   reference?: string | null
   notes?: string | null
 }
@@ -143,6 +181,7 @@ export interface FinanceAnalytics {
   revenueSources: Array<{ key: string; label: string; amount: number }>
   branches: Array<{ branchId: string | null; name: string; orders: number; revenue: number; expenses: number; capex: number; operatingProfit: number; operatingMargin: number | null }>
   heatmap: Array<{ weekday: number; hour: number; orders: number; revenue: number }>
+  bestSellers: BestSeller[]
   topVendors: Array<{ party: string; amount: number; entries: number }>
   topCustomers: Array<{ party: string; amount: number; entries: number }>
   funding: Array<{ id: string; date: string; kind: "capital" | "withdrawal"; kindLabel: string; category: string; categoryLabel: string; title: string; party: string | null; amount: number; netCapital: number }>

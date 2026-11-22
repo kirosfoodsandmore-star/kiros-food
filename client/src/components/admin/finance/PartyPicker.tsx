@@ -34,7 +34,7 @@ export function PartyPicker({ value, onChange, parties, kind, placeholder, ariaL
   const suggestions = useMemo(() => {
     const matches = parties.filter((p) => !q || norm(p.name).includes(q))
     matches.sort((a, b) => Number(b.kinds.includes(kind)) - Number(a.kinds.includes(kind)) || Number(norm(b.name).startsWith(q)) - Number(norm(a.name).startsWith(q)) || b.entries - a.entries || a.name.localeCompare(b.name))
-    return matches.slice(0, 6)
+    return matches.slice(0, 100)
   }, [parties, q, kind])
   const showAdd = Boolean(q) && !exact
   const options: Array<{ party?: FinanceParty; add?: string }> = [...suggestions.map((party) => ({ party })), ...(showAdd ? [{ add: value.name.trim() }] : [])]
@@ -76,7 +76,7 @@ export function PartyPicker({ value, onChange, parties, kind, placeholder, ariaL
         }}
       />
       {open && options.length > 0 && (q || parties.length > 0) ? (
-        <ul id={listId} role="listbox" className="mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-card p-1 text-sm shadow-sm">
+        <ul id={listId} role="listbox" className="mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-card p-1 text-sm shadow-sm">
           {options.map((o, i) => (
             <li
               key={o.party?.id ?? `add-${o.add}`}

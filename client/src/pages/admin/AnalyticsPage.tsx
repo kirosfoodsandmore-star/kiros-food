@@ -1,11 +1,12 @@
 // Business analytics: storefront sales and the books together. History and trends over any range (or since the
 // start), compared with the period before, plus restaurant KPIs, cash, payback, busy times and plain-language insights.
 import { differenceInCalendarDays, format, parseISO } from "date-fns"
-import { ArrowDown, ArrowUp, CircleCheck, Info, Lightbulb, Minus, OctagonAlert, Plus, TriangleAlert } from "lucide-react"
+import { ArrowDown, CircleCheck, Info, Lightbulb, OctagonAlert, Plus, TriangleAlert } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { BranchSelect } from "@/components/admin/BranchSelect"
-import { ChartCard, ColumnChart, compactNumber, Heatmap, Sparkline, TrendChart, type Series } from "@/components/charts/Charts"
+import { ChartCard, ColumnChart, compactNumber, Heatmap, Legend, TrendChart, type Series } from "@/components/charts/Charts"
+import { StatTile } from "@/components/charts/StatTile"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { DateRangeFilter } from "@/components/shared/DateRangeFilter"
 import { Money } from "@/components/shared/Money"
@@ -286,6 +287,9 @@ function Body({ data, money, fmt, canManage, branchName, onShowAll }: { data: Fi
         </Card>
       </div>
 
+      {/* What's selling: app orders and counter sales together */}
+      <BestSellers rows={data.bestSellers} fmt={fmt} />
+
       {/* Customers & timing */}
       <div className="grid gap-5 lg:grid-cols-2">
         <ChartCard title="Busy times" description="App orders by day of the week and hour.">
@@ -350,24 +354,39 @@ function FundingTimeline({ funding, fmt }: { funding: FinanceAnalytics["funding"
   )
 }
 
-
-function StatTile({ label, value, now, before, upIsGood, spark, ratio }: { label: string; value: ReactNode; now: number; before: number; upIsGood: boolean; spark: number[]; ratio?: boolean }) {
-  const delta = ratio ? (before === 0 && now === 0 ? null : now - before) : change(now, before)
-  const up = (delta ?? 0) > 0
-  const good = delta === null || delta === 0 ? null : up === upIsGood
-  const Icon = delta === null || delta === 0 ? Minus : up ? ArrowUp : ArrowDown
+/** Items by units sold, app orders and walk-in sales side by side. */
+function BestSellers({ rows, fmt }: { rows: FinanceAnalytics["bestSellers"]; fmt: ReturnType<typeof useAdminCurrency> }) {
+  const max = Math.max(1, ...rows.map((r) => r.units))
   return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="mt-1 break-all font-display text-lg font-semibold sm:text-xl">{value}</p>
-        <div className="mt-1 flex items-end justify-between gap-2">
-          <span className={cn("flex items-center gap-0.5 text-xs", good === null ? "text-muted-foreground" : good ? "text-success" : "text-destructive")}>
-            <Icon className="size-3" aria-hidden />
-            {delta === null ? "no earlier data" : ratio ? `${delta >= 0 ? "+" : "−"}${Math.abs(delta * 100).toFixed(1)} pts` : `${pct(Math.abs(delta))}`}
-          </span>
-          <Sparkline values={spark} />
-        </div>
+    <Card data-cy="best-sellers">
+      <CardHeader>
+        <CardTitle>Best sellers</CardTitle>
+        <p className="text-sm text-muted-foreground">Items by units sold this period: online orders and sales recorded at the counter together.</p>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nothing to show yet. Pick the menu items when you record a walk-in sale (Capital & expenses → Record → Other income) and they'll appear here with your online orders.</p>
+        ) : (
+          <>
+            <Legend series={[{ key: "app", label: "Online orders", color: C1 }, { key: "walk", label: "Sold at the counter", color: C2 }]} className="mb-3" />
+            <ul className="space-y-3">
+              {rows.map((r, i) => (
+                <li key={r.key}>
+                  <div className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate"><span className="text-muted-foreground tabular-nums">{i + 1}.</span> {r.name}</span>
+                    <span className="shrink-0 tabular-nums"><span className="font-medium">{r.units.toLocaleString()} sold</span> <span className="text-xs text-muted-foreground">· <Money value={r.revenue} fmt={fmt} /></span></span>
+                  </div>
+                  <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${r.appUnits} from online orders, ${r.walkInUnits} at the counter`}>
+                    {r.appUnits ? <div className="h-2" style={{ width: `${(r.appUnits / max) * 100}%`, background: C1 }} /> : null}
+                    {r.appUnits && r.walkInUnits ? <div className="h-2 w-0.5 bg-card" /> : null}
+                    {r.walkInUnits ? <div className="h-2" style={{ width: `${(r.walkInUnits / max) * 100}%`, background: C2 }} /> : null}
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{r.appUnits} online · {r.walkInUnits} at the counter</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </CardContent>
     </Card>
   )

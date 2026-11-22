@@ -15,6 +15,8 @@ export interface ExportInput {
   entries: FinanceEntry[];
   /** Each entry's split between vendors / customers. An entry split between several gets one row per person. */
   lines: Array<{ entryId: string; name: string; amount: number }>;
+  /** Items sold on offline sales; they get their own sheet. */
+  items: Array<{ entryId: string; name: string; quantity: number; unitPrice: number }>;
   branchName: (id: string | null) => string;
   restaurant: string;
   /** Human-readable filters, e.g. [["Period", "1 Jan 2025 – 31 Jan 2025"], ["Type", "Expenses"]]. */
@@ -83,6 +85,27 @@ export async function buildEntriesWorkbook(input: ExportInput): Promise<Buffer> 
   }
   header(ws);
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
+
+  // ── Items sold: one row per item on an offline sale ────────────────────
+  if (input.items.length) {
+    const byId = new Map(input.entries.map((e) => [e.id, e]));
+    const it = wb.addWorksheet("Items sold", { views: [{ state: "frozen", ySplit: 1 }] });
+    it.columns = [
+      { header: "Date", key: "date", width: 13, style: { numFmt: "dd/mm/yyyy" } },
+      { header: "Sale", key: "sale", width: 30 },
+      { header: "Item", key: "item", width: 30 },
+      { header: "Quantity", key: "qty", width: 10 },
+      { header: "Unit price (₦)", key: "price", width: 16, style: { numFmt: MONEY } },
+      { header: "Total (₦)", key: "total", width: 16, style: { numFmt: MONEY } },
+      { header: "Branch", key: "branch", width: 18 },
+    ];
+    for (const l of input.items) {
+      const e = byId.get(l.entryId);
+      if (!e) continue;
+      it.addRow({ date: utcDate(e.entryDate), sale: e.title, item: l.name, qty: l.quantity, price: naira(l.unitPrice), total: naira(l.quantity * l.unitPrice), branch: e.branchId ? input.branchName(e.branchId) : "" });
+    }
+    header(it);
+  }
 
   // ── Summary ────────────────────────────────────────────────────────────
   const sum = wb.addWorksheet("Summary");

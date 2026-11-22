@@ -26,7 +26,7 @@ Each story reads `As an owner (or manager, or staff member), I want … so that 
 | --- | --- |
 | `finance.view` | Open Capital & expenses and Analytics, read every entry and budget, see all the analytics and the vendors & customers list with totals |
 | `finance.manage` | Record, import, edit and delete any entry; set budgets; add, rename, merge and remove vendors & customers |
-| `finance.record_sales` | **Sales only:** record other income (walk-in, catering…), split between customers; see and correct only the sales they recorded, until 6am the next morning. No capital, expenses, budgets, analytics, imports or downloads. |
+| `finance.record_sales` | **Sales only:** record other income (walk-in, catering…), split between customers; see every sale at their branches; correct or delete only the sales they recorded themselves, until 6am the next morning. No capital, expenses, budgets, analytics, imports or downloads. |
 | `reports.export` (existing) | Download the books as an Excel file |
 
 The Owner role has everything. No other role gets any finance permission until the Owner grants it, because the books show capital, salaries and profit.
@@ -52,8 +52,10 @@ The Owner role has everything. No other role gets any finance permission until t
   1. In **Staff & roles**, create a role (e.g. "Cashier") and tick only **Finance → Record walk-in and other sales only**. Give it to the person and set their branch.
   2. When they sign in they land on **Record sales**, and that's the only finance link they see. Opening `/admin/finance` or `/admin/analytics` sends them away.
   3. **Record a sale** opens the form locked to sales: no capital/expense/money-out switch, the Branch box shows only their branch, and the lines are **Customers**.
-  4. The page shows what they've recorded today and their own sales. They can edit or delete a sale until **6am the next morning**: the sales day rolls over at 6am, not midnight, so a sale entered at 11pm or 1am can still be fixed at closing time. After 6am it's "ask a manager" (the page says so). Managers can always correct it in Capital & expenses.
-  - They see only the names of customers already used on sales: no vendor names and no amounts. They can't import, download, set budgets, or manage the vendors & customers list.
+  4. The page shows **Sales today** (the sales dated today, summed by the server) and **Recent sales**, **newest entered first and grouped by day** (Today, Yesterday, then dates), for their branch(es): everything sold there, including what the owner or a manager recorded, each marked "by you" or by the person's name. They can edit or delete only **their own** sales, until **6am the next morning**: the sales day rolls over at 6am, not midnight, so a sale entered at 11pm or 1am can still be fixed at closing time. After 6am it's "ask a manager" (the page says so). Managers can always correct it in Capital & expenses.
+  - **Back-dated sales are flagged.** If a sale's date isn't the day it was entered, its row carries an amber **Dated 18 Jun 2026** badge, and it is not counted in "Sales today". In the form, picking a date two or more days back shows an amber warning under the date ("Dated 18 Jun 2026, not today. It counts in that period, not in today's or this month's totals.") with a **Use today** link. Analytics counts a sale in the period of its **date**, so a sale dated in June never appears in a 30-day view.
+  - A sale recorded for the **whole business** (Branch = Whole business) belongs to no branch, so branch staff don't see it. When you record a sale as owner, pick the branch if that branch's staff should see it (the Branch box reminds you).
+  - They see sales (income) only, never expenses or capital. They see only the names of customers already used on sales: no vendor names and no amounts. They can't import, download, set budgets, or manage the vendors & customers list.
   - Someone with both this and `finance.view` doesn't get the extra link: Capital & expenses already covers it.
 
 ---
@@ -172,6 +174,19 @@ What to bring in, in this order:
 - [ ] **As the owner, I want to record walk-in and catering sales, so that revenue isn't just the app's orders.**
   - **Record → Other income → Walk-in / offline sales** (or **Catering & events**).
   - One sale can be split between several customers the same way, e.g. a catering job paid by two clients.
+
+- [ ] **As the owner or a cashier, I want to pick the menu items that were sold in a walk-in sale, so that I can see which products sell at the counter, not just online.**
+  1. **Record → Other income → Walk-in / offline sales** (or **Catering & events**). A sales-only cashier's form is already on Walk-in sales.
+  2. Under **What was sold**, click **Add what was sold** and start typing an item. Your menu appears underneath with each item's category and price. Pick one and its menu price is filled in.
+  3. Set the **quantity**. Change the **price each** if the customer got a discount; the menu price is only the starting point. **Add another item** for more lines, and **×** removes one.
+  4. The **Total** adds itself up (quantity × price, summed). You can't type over it while items are listed.
+  5. **Record.** The sale shows what was in it, e.g. "3× Chicken wrap, 1× Exclusive sandwich".
+  - The list offers only the menus that the branch you chose serves (no branch chosen: everything on the menu). Items that are switched off or deleted aren't offered.
+  - Something sold that isn't on the menu can be typed in ("Add “…” (not on the menu)"). It's tracked by its name.
+  - The item's name is kept as it was when sold, so later renaming or deleting a menu item doesn't change old sales.
+  - Items are optional. Leave them out and enter a plain amount as before.
+  - A sale with items and a customer split: the customers' amounts must add up to the items' total. The form shows "₦X of ₦Y assigned" as you go.
+  - Editing a sale with items: change the items and the total follows. To go back to a plain amount, remove all the items. A sale's total can't be changed without its items.
   - This adds to **Revenue** in analytics and appears separately under **Revenue sources**. Customers appear under **Top customers**.
 
 - [ ] **As the owner, I want to record money I take out, so that cash and capital stay honest.**
@@ -225,6 +240,7 @@ What to bring in, in this order:
   - **Entries** sheet: Date (real dates), Category, Description, Amount (₦, in naira), Vendor / paid to, Paid by, Reference, Notes, Branch (by name; blank = whole business), Type, Group, Recorded by. The heading row is frozen and has filter arrows.
   - An entry split between several vendors or customers comes out as **one row per person** with their own amount (same date, category and description). That way the file adds up correctly and imports back as separate entries.
   - **Summary** sheet: the filters used and when it was downloaded, totals per category grouped by type, and money in, money out and net.
+  - **Items sold** sheet (only when some sales in the file list items): one row per item with date, sale, item, quantity, unit price, total and branch.
   - App orders aren't in this file. Use Sales reports for those, or Analytics for everything together.
 
 - [ ] **As the owner, I want to fix things in Excel and bring them back, so that bulk corrections are quick.**
@@ -256,6 +272,10 @@ What to bring in, in this order:
 - [ ] **As the owner, I want six key numbers with their direction, so that I know in five seconds how we're doing.**
   - **Revenue, Costs, Operating profit, Operating margin, App orders, Average order**, each with the change against the previous period and a small trend line.
   - Green means good, red means bad: costs going **up** shows red; revenue going up shows green. Margin changes show as points (e.g. "+4.4 pts").
+
+- [ ] **As the owner, I want to know why a sale I recorded isn't in Analytics, so that I can fix it instead of guessing.**
+  - Analytics counts each entry in the period of its **date** and only for the branch selected. If a sale is missing, check in this order: (1) its date, since a sale dated outside the period isn't counted, so try **All time**; (2) the **Branch** box, because a remembered branch hides other branches, and entries filed for the whole business are left out of a single-branch view (a yellow notice says so); (3) that the sale was recorded as **Other income**, not as another type.
+  - On the Record sales page a back-dated sale shows a **Dated …** badge, which is the quickest way to spot a mistyped date. Edit the sale and set the date to today to bring it into the current period.
 
 - [ ] **As the owner, I want the app to tell me what stands out, so that I don't have to read every chart.**
   - **What stands out** lists up to 8 findings, most urgent first (needs attention → watch → good → note). Examples:
@@ -318,9 +338,46 @@ What to bring in, in this order:
 
 - [ ] **As the owner, I want the funding timeline and my biggest suppliers, so that I can see who I depend on.**
   - **Funding history**: every capital-in and money-out entry in date order, with the running net capital. Only the latest 8 show until you click **Show N earlier**.
+  - **Best sellers**: the items that sold most, online orders and counter sales **together**, with each item's units, revenue, and how many came from online orders against the counter (a two-colour bar). Only paid online orders count (cancelled and refunded are left out). Counter sales appear here only when you picked the items; a sale entered as a plain amount adds to revenue but not to this list. In a single-branch view, only that branch's sales count.
   - **Top vendors & customers this period**: the six vendors you spent most with and the six customers who paid you most (other income), each with their share. A split counts only each person's own part.
 
 ---
+
+### Sales reports: online and counter sales together
+
+Sales reports (Business → **Sales reports**, `reports.view`) used to count online orders only. It now adds counter sales (walk-in and catering sales recorded in the app) and has been redesigned.
+
+- [ ] **As a manager, I want counter sales in my sales report, so that the report matches what the branch really sold.**
+  - Counter sales are the entries recorded as **Walk-in / offline sales** or **Catering & events**, counted on the **date of the sale**. Other income (interest, refunds…) and expenses are not sales and are left out. Cancelled and refunded online orders are left out as before.
+  - A manager limited to certain branches sees only those branches' counter sales. Sales filed for the whole business appear only under **All branches** (a note says so when a branch is selected).
+  - Counter sales are included for anyone with `reports.view`; they don't need the finance permissions.
+
+- [ ] **As a manager, I want to pick the period quickly and compare it with the one before, so that I can see if sales are growing.**
+  - Presets: **Today, 7 days, 30 days, This month, Last month, 90 days, This year, Custom** (two dates). The page title shows the period and the equally long period it's compared with.
+  - Every headline number shows the change against that earlier period (green up, red down) and a small trend line.
+
+- [ ] **As a manager, I want to switch between all sales, online orders and counter sales, so that I can look at each on its own.**
+  - **All sales** shows five tiles: Total sales, Online orders, Counter sales, Average sale and Counter share. **Online orders** and **Counter sales** show tiles for that source only (orders, average order, units sold, delivery share…). The choice is remembered on this browser.
+
+- [ ] **As a manager, I want a chart and a few highlights, so that I don't have to read every row.**
+  - **Sales over time:** columns per day (weeks for ranges over 45 days, months over about 6 months), with online orders in blue stacked on counter sales in orange. Hover or tap for exact figures; the table icon shows the same data as a table.
+  - **Highlights:** the best day, the average per day, the best weekday, and how many days had sales.
+
+- [ ] **As a manager, I want the breakdown by day, branch, menu, item or option, with both sources side by side.**
+  - **All sales:** each row shows online (with the number of orders), counter (with the number of sales), the total, and a blue/orange mix bar. **Online orders** adds subtotal, delivery and discounts. **Counter sales** shows sales, units and revenue.
+  - **By item:** one row per product, adding online units to counter units. **By menu:** counter sales are placed under the menu their items belong to. A counter sale that didn't list its items has no product or menu, so it shows as **Sales without items listed**, which keeps the totals honest. (Pick the items when recording a sale to get them into these rows.)
+  - **By option:** online orders only; counter sales don't record options.
+  - Days are listed newest first, and the table shows 15 rows a page with a total row. On a phone each row becomes a card.
+
+- [ ] **As a manager, I want to download the report as Excel, so that I can share it or work on it.**
+  - **Excel** downloads `sales-by-<grouping>.xlsx` (needs `reports.export`): a **Summary** sheet (this period against the previous one, with the change) and a sheet with the rows of the grouping you're viewing, a share-of-total column and a total row. The old CSV button is gone from the page.
+
+- [ ] **As a manager, I want today's counter sales on the Dashboard, so that the first screen shows what the whole business sold.**
+  - **Today's tiles:** Orders today (online), **Counter sales today** (walk-in and catering), **Revenue today** (online + counter, with the split underneath: "Online ₦… · Counter ₦…"), **Average sale** (per order or counter sale) and **Items sold today** (online units plus counter units where items were listed).
+  - **Top items today** adds online and counter units for each product and shows where they sold ("4 online · 4 at the counter").
+  - **Last 30 days** gains **Counter sales** and a combined **Revenue** with the same split.
+  - Respects the same limits as the reports: a branch manager sees only their branch's counter sales (whole-business sales only appear with All branches), and today's counter sales are those dated today.
+  - **Who sees what:** counter sales, revenue and the average need `reports.view` (as revenue already did). Someone who can open the Dashboard without it (for example the kitchen) still sees order counts and online items, and no money or counter figures.
 
 ## Stage 8 — Use it on your phone
 
@@ -435,8 +492,9 @@ Use this on a test restaurant (or a staging copy), not your live books. It gives
 - The category must belong to the kind (e.g. Rent is only ever an expense).
 - Branch-limited staff can only file and see entries for their branches.
 - Recording, importing, editing, deleting, budgets and the vendors & customers list need `finance.manage`; the Excel download needs `reports.export`.
-- `finance.record_sales` alone allows only: recording other income, and seeing / correcting / deleting the sales that person recorded, until the sales day rolls over at 6am. Everything else is refused by the server, not just hidden.
+- `finance.record_sales` alone allows only: recording other income, and seeing every sale at the person's branches, and correcting / deleting only the sales that person recorded, until the sales day rolls over at 6am. Everything else is refused by the server, not just hidden.
 - In a split, the lines must add up to the total, each needs a name and an amount, and a name can appear only once.
+- A sale's items must add up to its total, and items can only be listed on a sale (other income), not on expenses or capital.
 - Every change is written to the audit log; deleted entries can be traced there.
 - Imports: Excel (.xlsx) or rows pasted from Excel; up to 1,000 rows and 5 MB per file; all rows are saved together or none.
 
@@ -454,5 +512,7 @@ These aren't covered yet. Decide them before relying on the numbers for anything
 6. **Stock on hand** isn't tracked, so food cost is based on what was bought in the period, not what was used.
 7. **Estimated cash** is only as good as what's recorded. It isn't a bank balance, so compare it with the bank statement each month.
 8. **Splits in Excel.** An imported row has one vendor or customer. A split entry is imported as one row per person, so it becomes separate entries (the totals are the same). Splitting can be done in the app. (Decided: no multi-vendor cell in Excel; if grouping rows ever matters, an optional "Entry no." column can be added.)
-9. **Cashier corrections** are limited to 6am the next morning (decided: the short window stops a sale being recorded, the cash taken, and the sale deleted days later). Later corrections go to a manager. The 6am is fixed for now, not a setting; if you trade through the night, say so and we'll move it.
-10. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.
+9. **Items in Excel imports.** The import brings in sales as plain amounts; it doesn't read items. Use the form (or ask for item import if you have a lot of history by item). The **Sales reports** page, grouped by item, still counts online orders only: **Best sellers** in Analytics is where the two are combined.
+10. **Items with options.** A build-your-own salad is one menu item with a base price. Pick it and type the final price charged; the choices (dressing, protein…) aren't recorded per sale yet.
+11. **Cashier corrections** are limited to 6am the next morning (decided: the short window stops a sale being recorded, the cash taken, and the sale deleted days later). Later corrections go to a manager. The 6am is fixed for now, not a setting; if you trade through the night, say so and we'll move it.
+12. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.

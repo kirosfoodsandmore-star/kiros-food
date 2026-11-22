@@ -32,6 +32,7 @@ import { PaymentEntity } from "../../modules/payment/entities/payment.entity";
 import { PaymentSettingsEntity } from "../../modules/payment/entities/paymentSettings.entity";
 import { FinanceBudgetEntity } from "../../modules/finance/entities/financeBudget.entity";
 import { FinanceEntryEntity } from "../../modules/finance/entities/financeEntry.entity";
+import { FinanceEntryItemEntity } from "../../modules/finance/entities/financeEntryItem.entity";
 import { FinanceEntryPartyEntity, FinancePartyEntity } from "../../modules/finance/entities/financeParty.entity";
 import { PromoCodeEntity } from "../../modules/promo/entities/promoCode.entity";
 import { StaffInviteEntity } from "../../modules/user/entities/staffInvite.entity";
@@ -80,6 +81,7 @@ export const ALL_ENTITIES: EntitySchema[] = [
   FinanceBudgetEntity,
   FinancePartyEntity,
   FinanceEntryPartyEntity,
+  FinanceEntryItemEntity,
   // Chat
   ChatConversationEntity,
 ];

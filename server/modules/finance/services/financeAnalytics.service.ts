@@ -10,6 +10,7 @@ import { OrganizationRepository } from "../../organization/repositories/organiza
 import { categoryLabel, EXPENSE_GROUP_LABELS, EXPENSE_GROUPS, FINANCE_KIND_LABELS } from "../catalog/finance.catalog";
 import { autoGranularity, bucketList, buildInsights, groupOf, monthsIn, previousRange, ratio, totalsOf, type LedgerAmount } from "../domain/analytics";
 import { FinanceRepository } from "../repositories/finance.repository";
+import { SaleItemRepository } from "../repositories/saleItem.repository";
 import type { AnalyticsQuery } from "../validators/finance.schema";
 
 const sumBy = <T>(rows: T[], pick: (r: T) => number) => rows.reduce((s, r) => s + pick(r), 0);
@@ -18,6 +19,7 @@ export class FinanceAnalyticsService {
   static Instance = new FinanceAnalyticsService();
   private constructor(
     private readonly repo = FinanceRepository.Instance,
+    private readonly sold = SaleItemRepository.Instance,
     private readonly organizations = OrganizationRepository.Instance,
     private readonly branches = BranchService.Instance
   ) {}
@@ -42,7 +44,7 @@ export class FinanceAnalyticsService {
     const scope = { organizationId, branchIds, from, to, timezone };
     const prevScope = { ...scope, ...prev };
 
-    const [ledger, orders, prevLedger, prevOrders, allLedger, allRevenue, heat, vendors, customers, funding, ledgerBranches, wholeBusiness, orderBranches, budgets, branchList] = await Promise.all([
+    const [ledger, orders, prevLedger, prevOrders, allLedger, allRevenue, heat, bestSellers, vendors, customers, funding, ledgerBranches, wholeBusiness, orderBranches, budgets, branchList] = await Promise.all([
       this.repo.ledgerBuckets(scope, granularity),
       this.repo.orderBuckets(scope, granularity),
       this.repo.ledgerBuckets(prevScope, "month"),
@@ -50,6 +52,7 @@ export class FinanceAnalyticsService {
       this.repo.ledgerTotalsUpTo(organizationId, branchIds, to),
       this.repo.orderRevenueUpTo({ organizationId, branchIds, to, timezone }),
       this.repo.heatmap(scope),
+      this.sold.bestSellers(scope),
       this.repo.topParties(scope, "expense"),
       this.repo.topParties(scope, "income"),
       this.repo.fundingHistory(organizationId, branchIds, to),
@@ -204,6 +207,7 @@ export class FinanceAnalyticsService {
       revenueSources,
       branches,
       heatmap: heat,
+      bestSellers,
       topVendors: vendors,
       topCustomers: customers,
       funding: fundingHistory,

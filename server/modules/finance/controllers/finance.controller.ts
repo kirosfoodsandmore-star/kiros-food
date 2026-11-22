@@ -1,7 +1,7 @@
 import { actorOf, handle, input, Paged } from "../../../shared/http/handler";
 import { FinanceService } from "../services/finance.service";
 import { FinanceAnalyticsService } from "../services/financeAnalytics.service";
-import { analyticsSchema, createEntrySchema, createPartySchema, entryIdSchema, importEntriesSchema, listEntriesSchema, mergePartySchema, partyIdSchema, setBudgetsSchema, updateEntrySchema, updatePartySchema } from "../validators/finance.schema";
+import { analyticsSchema, createEntrySchema, createPartySchema, entryIdSchema, importEntriesSchema, listEntriesSchema, mergePartySchema, partyIdSchema, saleItemsQuerySchema, setBudgetsSchema, updateEntrySchema, updatePartySchema } from "../validators/finance.schema";
 
 export class FinanceController {
   static categories = handle("Finance categories", async () => FinanceService.Instance.categories());
@@ -20,6 +20,7 @@ export class FinanceController {
   static remove = handle("Entry deleted", (req) => FinanceService.Instance.remove(actorOf(req), input(req, entryIdSchema).params.id));
   static budgets = handle("Budgets fetched", (req) => FinanceService.Instance.budgets(actorOf(req)));
   static setBudgets = handle("Budgets saved", (req) => FinanceService.Instance.setBudgets(actorOf(req), input(req, setBudgetsSchema).body.budgets));
+  static saleMenu = handle("Menu items for sales", (req) => FinanceService.Instance.menuForSale(actorOf(req), input(req, saleItemsQuerySchema).query.branchId));
   static parties = handle("Vendors & customers", (req) => FinanceService.Instance.listParties(actorOf(req)));
   static createParty = handle("Added", (req) => FinanceService.Instance.createParty(actorOf(req), input(req, createPartySchema).body), 201);
   static updateParty = handle("Saved", (req) => {

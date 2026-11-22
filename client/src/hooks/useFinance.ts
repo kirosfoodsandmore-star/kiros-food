@@ -32,6 +32,11 @@ export function useFinanceBudgets() {
   return useQuery({ queryKey: [FINANCE_KEY, "budgets"], queryFn: async () => unwrap(await FinanceEndpoints.budgets()) })
 }
 
+/** The menu, for picking what was sold. Follows the branch chosen on the sale. */
+export function useSaleMenu(branchId: string | undefined, enabled = true) {
+  return useQuery({ queryKey: [FINANCE_KEY, "sale-menu", branchId ?? "all"], queryFn: async () => unwrap(await FinanceEndpoints.saleItems(branchId)), enabled, staleTime: 60_000 })
+}
+
 /** Saved vendors & customers (names only, for sales-only staff). */
 export function useFinanceParties(enabled = true) {
   return useQuery({ queryKey: [FINANCE_KEY, "parties"], queryFn: async () => unwrap(await FinanceEndpoints.parties()), enabled, staleTime: 60_000 })

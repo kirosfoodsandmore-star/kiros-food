@@ -322,18 +322,66 @@ export interface SalesTotals {
   pickupOrders: number
 }
 
+/** One group (a day, a branch, an item…) with online orders and counter sales side by side. Money is kobo. */
+export interface SalesReportRow {
+  key: string
+  label: string
+  /** Online orders, and the units on them. */
+  orders: number
+  items: number
+  subtotal: number
+  deliveryFees: number
+  discounts: number
+  onlineRevenue: number
+  /** Counter sales (walk-in / catering) and the units on those that listed their items. */
+  counterSales: number
+  counterItems: number
+  counterRevenue: number
+  /** Online + counter. */
+  revenue: number
+}
+
+export interface SalesReportTotals {
+  orders: number
+  items: number
+  onlineRevenue: number
+  deliveryOrders: number
+  pickupOrders: number
+  counterSales: number
+  counterItems: number
+  counterRevenue: number
+  revenue: number
+  /** Revenue per order or counter sale. */
+  averageSaleValue: number
+}
+
 export interface SalesReport {
   groupBy: "day" | "branch" | "menu" | "item" | "option"
   from: string
   to: string
   timezone: string
-  totals: SalesTotals
-  rows: SalesRow[]
+  /** The equally long period just before, for comparison. */
+  previous: { from: string; to: string; totals: SalesReportTotals }
+  totals: SalesReportTotals
+  rows: SalesReportRow[]
 }
 
-/** Dashboard totals: revenue and average order are null for people without the sales-report permission. */
-export interface DashboardTotals extends Omit<SalesTotals, "revenue" | "averageOrderValue"> {
+/**
+ * Dashboard totals for a period. Orders are online orders. Revenue, counter sales and the average are null for people
+ * without the sales-report permission; revenue and the average then cover online orders and counter sales together.
+ */
+export interface DashboardTotals {
+  orders: number
+  /** Units sold: online plus counter (counter only where the sale listed its items). */
+  items: number
+  deliveryOrders: number
+  pickupOrders: number
   revenue: number | null
+  onlineRevenue: number | null
+  /** Walk-in and catering sales recorded in the app. */
+  counterSales: number | null
+  counterRevenue: number | null
+  /** Revenue per order or counter sale. */
   averageOrderValue: number | null
 }
 
@@ -343,7 +391,8 @@ export interface Dashboard {
   canSeeRevenue: boolean
   today: DashboardTotals
   last30Days: DashboardTotals
-  topItemsToday: Array<{ label: string; items: number }>
+  /** Units today; with the sales-report permission `online` and `counter` say where they sold. */
+  topItemsToday: Array<{ label: string; items: number; online?: number; counter?: number }>
   liveStatusCounts: Record<string, number>
   branches: Array<{ id: string; name: string; city: string; isActive: boolean; isPaused: boolean; pauseReason: string | null; isOpen: boolean; closesAt: string | null; nextOpenAt: string | null }>
 }

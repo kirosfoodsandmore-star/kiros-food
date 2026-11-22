@@ -24,12 +24,11 @@ export interface EntryFilter {
   page: number;
   limit: number;
   search?: string;
+  sort?: "date" | "recorded";
   kind?: string;
   category?: string;
   from?: string;
   to?: string;
-  /** Only entries this person recorded (sales-only staff). */
-  createdBy?: string;
 }
 
 export interface LedgerBucketRow {
@@ -81,7 +80,6 @@ export class FinanceRepository {
     const where = this.entryWhere(p, organizationId, branchIds);
     if (f.kind) where.push(`e.kind = ${p.add(f.kind)}`);
     if (f.category) where.push(`e.category = ${p.add(f.category)}`);
-    if (f.createdBy) where.push(`e.created_by = ${p.add(f.createdBy)}`);
     if (f.from) where.push(`e.entry_date >= ${p.add(f.from)}::date`);
     if (f.to) where.push(`e.entry_date <= ${p.add(f.to)}::date`);
     if (f.search) {
@@ -92,7 +90,7 @@ export class FinanceRepository {
     const [{ n, sum }] = await db().query(`SELECT COUNT(*)::int AS n, COALESCE(SUM(e.amount),0) AS sum FROM finance_entries e WHERE ${sql}`, p.values);
     const limit = p.add(f.limit);
     const offset = p.add(getOffset(f.page, f.limit));
-    const ids: Array<{ id: string }> = await db().query(`SELECT e.id FROM finance_entries e WHERE ${sql} ORDER BY e.entry_date DESC, e.created_at DESC, e.id DESC LIMIT ${limit} OFFSET ${offset}`, p.values);
+    const ids: Array<{ id: string }> = await db().query(`SELECT e.id FROM finance_entries e WHERE ${sql} ORDER BY ${f.sort === "recorded" ? "e.created_at DESC, e.id DESC" : "e.entry_date DESC, e.created_at DESC, e.id DESC"} LIMIT ${limit} OFFSET ${offset}`, p.values);
     const rows = ids.length ? await db().getRepository(FinanceEntryEntity).findBy({ id: In(ids.map((r) => r.id)) }) : [];
     const order = new Map(ids.map((r, i) => [r.id, i]));
     rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));

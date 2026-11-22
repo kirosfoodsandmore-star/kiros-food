@@ -17,22 +17,33 @@ import type { FinanceEntry } from "../entities/financeEntry.entity";
 import { FinanceRepository, type NewEntry } from "../repositories/finance.repository";
 import { salesDayOf, SALES_DAY_STARTS_HOUR } from "../domain/salesDay";
 import { joinNames, PartyRepository, type EntryPartyLine } from "../repositories/party.repository";
+import { SaleItemRepository, type EntryItemLine } from "../repositories/saleItem.repository";
 import { buildEntriesWorkbook, XLSX_MIME } from "./financeExport";
-import type { BudgetRow, EntryBody, ListEntriesQuery, PartyBody, PartyLineBody, UpdateEntryBody, UpdatePartyBody } from "../validators/finance.schema";
+import type { BudgetRow, EntryBody, ListEntriesQuery, PartyBody, PartyLineBody, SaleItemLineBody, UpdateEntryBody, UpdatePartyBody } from "../validators/finance.schema";
 
 export type FinanceEntryDTO = Omit<FinanceEntry, "organizationId" | "deletedAt" | "organization"> & {
   /** Who it was paid to / received from, with each one's share (adds up to amount). Empty when nobody was named. */
   parties: Array<{ partyId: string; name: string; amount: number }>;
+  /** What was sold (offline sales): menu items with quantity and the price charged each. Empty when not itemised. */
+  items: Array<{ itemId: string | null; name: string; categoryName: string | null; quantity: number; unitPrice: number }>;
 };
+
+interface ResolvedItems {
+  lines: Array<{ itemId: string | null; name: string; categoryName: string | null; quantity: number; unitPrice: number }>;
+}
 
 interface ResolvedParties {
   lines: Array<{ partyId: string; amount: number }>;
   names: string[];
 }
 
-export function toEntryDTO(e: FinanceEntry, lines: EntryPartyLine[] = []): FinanceEntryDTO {
+export function toEntryDTO(e: FinanceEntry, lines: EntryPartyLine[] = [], items: EntryItemLine[] = []): FinanceEntryDTO {
   const { organizationId: _o, deletedAt: _d, organization: _r, ...rest } = e;
-  return { ...rest, parties: lines.map((l) => ({ partyId: l.partyId, name: l.name, amount: l.amount })) };
+  return {
+    ...rest,
+    parties: lines.map((l) => ({ partyId: l.partyId, name: l.name, amount: l.amount })),
+    items: items.map((i) => ({ itemId: i.itemId, name: i.name, categoryName: i.categoryName, quantity: i.quantity, unitPrice: i.unitPrice })),
+  };
 }
 
 export class FinanceService {
@@ -42,8 +53,19 @@ export class FinanceService {
     private readonly organizations = OrganizationRepository.Instance,
     private readonly audit = AuditService.Instance,
     private readonly branches = BranchService.Instance,
-    private readonly parties = PartyRepository.Instance
+    private readonly parties = PartyRepository.Instance,
+    private readonly saleItems = SaleItemRepository.Instance
   ) {}
+
+  /** Menu items to pick from when recording a sale: this restaurant's active items, limited to the menus a branch serves. */
+  async menuForSale(actor: Actor, branchId?: string) {
+    if (!can(actor, "finance.view")) assertPermission(actor, "finance.record_sales");
+    if (branchId) assertBranchAccess(actor, branchId);
+    let items = await this.saleItems.menuItems(actor.organizationId, branchId ?? null);
+    // A branch that serves no menu (yet) can still sell: offer everything rather than an empty list.
+    if (!items.length && branchId) items = await this.saleItems.menuItems(actor.organizationId, null);
+    return items;
+  }
 
   // ── Saved vendors & customers ────────────────────────────────────────────
 
@@ -60,8 +82,9 @@ export class FinanceService {
   }
 
   // ── Who may do what ──────────────────────────────────────────────────────
-  // finance.manage: everything. finance.record_sales (without manage): record other income, and see, correct or
-  // delete only the sales they recorded themselves, until the sales day rolls over (6am).
+  // finance.manage: everything. finance.record_sales (without manage): record other income, see every sale at their
+  // branches (income only), and correct or delete only the sales they recorded themselves, until the sales day rolls
+  // over (6am).
 
   private assertMayRecord(actor: Actor, kind: string): void {
     if (can(actor, "finance.manage")) return;
@@ -139,13 +162,14 @@ export class FinanceService {
   }
 
   async list(actor: Actor, query: ListEntriesQuery) {
-    let q: ListEntriesQuery & { createdBy?: string } = query;
+    let q: ListEntriesQuery = query;
     const scope = branchScope(actor, q.branchId);
     if (!can(actor, "finance.view")) {
-      // Sales-only staff: their own sales, nothing else, and no downloads.
+      // Sales-only staff: every sale at their branches (so they see what the manager recorded too, and don't enter it
+      // twice), nothing else, and no downloads. Changing a sale is still limited to their own (see assertMayChange).
       assertPermission(actor, "finance.record_sales");
       if (q.format === "xlsx") throw AppError.forbidden();
-      q = { ...q, kind: "income", createdBy: actor.id };
+      q = { ...q, kind: "income" };
     }
     if (q.format === "xlsx") {
       assertPermission(actor, "reports.export");
@@ -164,10 +188,11 @@ export class FinanceService {
         ...(q.search ? [["Search", q.search] as [string, string]] : []),
         ["Entries", String(all.data.length)],
       ];
-      const lines = await this.parties.linesFor(all.data.map((e) => e.id));
+      const [lines, items] = await Promise.all([this.parties.linesFor(all.data.map((e) => e.id)), this.saleItems.linesFor(all.data.map((e) => e.id))]);
       const body = await buildEntriesWorkbook({
         entries: all.data,
         lines,
+        items,
         branchName: (id) => (id ? (names.get(id) ?? "Former branch") : ""),
         restaurant: org?.name ?? "Restaurant",
         filters,
@@ -239,9 +264,33 @@ export class FinanceService {
     });
   }
 
+  /**
+   * Checks each sale's item lines in one batch: names come from the menu (not the client) when the item is still on it,
+   * a typed name is kept as it is, and the lines must add up to the sale's amount. null = didn't mention items.
+   */
+  private async resolveItems(actor: Actor, rows: Array<{ kind: string; amount: number; items?: SaleItemLineBody[] }>, tx: Tx): Promise<Array<ResolvedItems | null>> {
+    const ids = [...new Set(rows.flatMap((r) => (r.items ?? []).flatMap((l) => (l.itemId ? [l.itemId] : []))))];
+    const known = new Map((await this.saleItems.findItems(actor.organizationId, ids, tx)).map((i) => [i.id, i]));
+    const row = (i: number) => (rows.length > 1 ? `Row ${i + 1}: ` : "");
+    return rows.map((r, i) => {
+      if (!r.items) return null;
+      if (r.items.length && r.kind !== "income") throw AppError.badRequest(`${row(i)}items can only be listed on a sale (other income)`);
+      const lines = r.items.map((l) => {
+        const menuItem = l.itemId ? known.get(l.itemId) : undefined;
+        const name = menuItem?.name ?? l.name;
+        if (!name) throw AppError.badRequest(`${row(i)}one of the items is no longer on the menu; choose it again`);
+        return { itemId: menuItem?.id ?? null, name, categoryName: menuItem?.category ?? null, quantity: l.quantity, unitPrice: l.unitPrice };
+      });
+      const total = lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+      if (lines.length && total !== r.amount) throw AppError.badRequest(`${row(i)}the items add up to ${formatMoney(total)}, but the total is ${formatMoney(r.amount)}`);
+      return { lines };
+    });
+  }
+
   private async withParties(entries: FinanceEntry[]): Promise<FinanceEntryDTO[]> {
-    const lines = await this.parties.linesFor(entries.map((e) => e.id));
-    return entries.map((e) => toEntryDTO(e, lines.filter((l) => l.entryId === e.id)));
+    const ids = entries.map((e) => e.id);
+    const [lines, items] = await Promise.all([this.parties.linesFor(ids), this.saleItems.linesFor(ids)]);
+    return entries.map((e) => toEntryDTO(e, lines.filter((l) => l.entryId === e.id), items.filter((l) => l.entryId === e.id)));
   }
 
   async create(actor: Actor, b: EntryBody): Promise<FinanceEntryDTO> {
@@ -249,8 +298,10 @@ export class FinanceService {
     await this.assertDate(actor, b.entryDate);
     const entry = await inTransaction(async (tx) => {
       const [resolved] = await this.resolveParties(actor, [b], tx);
+      const [itemLines] = await this.resolveItems(actor, [b], tx);
       const saved = await this.repo.create({ ...this.toNew(actor, b), party: joinNames(resolved?.names ?? []) }, tx);
       if (resolved?.lines.length) await this.parties.replaceLines(saved.id, resolved.lines, tx);
+      if (itemLines?.lines.length) await this.saleItems.replaceLines(saved.id, itemLines.lines, tx);
       await this.audit.log(actor, { action: "create", entityType: "finance_entry", entityId: saved.id, branchId: saved.branchId, summary: `Recorded ${FINANCE_KIND_LABELS[saved.kind].toLowerCase()} "${saved.title}" (${categoryLabel(saved.category)}, ${saved.amount} kobo, ${saved.entryDate}${saved.party ? `, ${saved.party}` : ""})`, after: b }, tx);
       return saved;
     });
@@ -265,8 +316,10 @@ export class FinanceService {
     const total = entries.reduce((s, e) => s + e.amount, 0);
     const imported = await inTransaction(async (tx) => {
       const resolved = await this.resolveParties(actor, rows, tx);
+      const itemLines = await this.resolveItems(actor, rows, tx);
       resolved.forEach((r, i) => { entries[i].party = joinNames(r?.names ?? []) });
       const ids = await this.repo.createMany(entries, tx);
+      await this.saleItems.insertLines(ids.flatMap((entryId, i) => (itemLines[i]?.lines ?? []).map((l, k) => ({ entryId, ...l, sortOrder: k }))), tx);
       await this.parties.insertLines(ids.flatMap((entryId, i) => (resolved[i]?.lines ?? []).map((l, k) => ({ entryId, partyId: l.partyId, amount: l.amount, sortOrder: k }))), tx);
       await this.audit.log(actor, { action: "import", entityType: "finance_entry", summary: `Imported ${ids.length} finance entries (${total} kobo in total)` }, tx);
       return ids.length;
@@ -286,7 +339,7 @@ export class FinanceService {
     if (b.branchId) assertBranchAccess(actor, b.branchId);
     if (b.entryDate) await this.assertDate(actor, b.entryDate);
     const amount = b.amount ?? entry.amount;
-    const { parties: _lines, party: _party, ...fields } = b;
+    const { parties: _lines, party: _party, items: _items, ...fields } = b;
     await inTransaction(async (tx) => {
       let [resolved] = await this.resolveParties(actor, [{ amount, parties: b.parties, party: b.party }], tx);
       if (!resolved && amount !== entry.amount) {
@@ -295,8 +348,16 @@ export class FinanceService {
         if (current.length > 1) throw AppError.badRequest("This entry is split between several people: change their amounts too");
         if (current.length === 1) resolved = { lines: [{ partyId: current[0].partyId, amount }], names: [current[0].name] };
       }
+      const [itemLines] = await this.resolveItems(actor, [{ kind, amount, items: b.items }], tx);
+      if (!itemLines) {
+        // Not mentioned: a sale that lists items keeps them, so its total and type cannot change underneath them.
+        const current = await this.saleItems.linesFor([id], tx);
+        if (current.length && amount !== entry.amount) throw AppError.badRequest("This sale lists items: change the items to change the total");
+        if (current.length && kind !== "income") throw AppError.badRequest("Remove the items first: only a sale (other income) can list items");
+      }
       await this.repo.update(actor.organizationId, id, { ...fields, kind, category, ...(resolved ? { party: joinNames(resolved.names) } : {}) }, tx);
       if (resolved) await this.parties.replaceLines(id, resolved.lines, tx);
+      if (itemLines) await this.saleItems.replaceLines(id, itemLines.lines, tx);
       await this.audit.log(actor, { action: "update", entityType: "finance_entry", entityId: id, branchId: entry.branchId, summary: `Edited finance entry "${entry.title}"`, before: entry as unknown as Record<string, unknown>, after: b }, tx);
     });
     return (await this.withParties([(await this.repo.findById(actor.organizationId, id))!]))[0];

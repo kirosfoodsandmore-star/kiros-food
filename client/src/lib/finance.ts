@@ -55,7 +55,7 @@ export function presetRange(p: Preset, custom: { from: string; to: string }): { 
 
 /** RFC-4180-ish: quoted fields, doubled quotes, commas/newlines inside quotes. Also accepts ; or tab separated. */
 export function parseCsv(text: string): string[][] {
-  const src = text.replace(/^﻿/, "")
+  const src = text.replace(/^\uFEFF/, "")
   const firstLine = src.split(/\r?\n/, 1)[0] ?? ""
   const sep = (firstLine.match(/\t/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? "\t" : (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ";" : ","
   const rows: string[][] = []
@@ -202,3 +202,11 @@ export function salesDay(at: Date | string, timeZone: string, startsHour: number
   const shifted = new Date(new Date(at).getTime() - startsHour * 3_600_000)
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(shifted)
 }
+
+/** "3× Chicken wrap, 2× Exclusive sandwich": what an offline sale was made of, for lists. */
+export function itemsSummary(items: Array<{ name: string; quantity: number }>): string {
+  return items.map((i) => `${i.quantity}× ${i.name}`).join(", ")
+}
+
+/** Item categories whose sales are normally made of menu items. */
+export const SALE_ITEM_CATEGORIES = ["offline_sales", "catering"]

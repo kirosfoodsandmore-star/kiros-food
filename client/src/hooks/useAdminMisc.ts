@@ -51,8 +51,8 @@ export function useCustomerMutations() {
   }
 }
 
-export function useSalesReport(params: Body) {
-  return useQuery({ queryKey: [REPORTS_KEY, "sales", params], queryFn: async () => unwrap(await ReportEndpoints.sales(params)) })
+export function useSalesReport(params: Body, enabled = true) {
+  return useQuery({ queryKey: [REPORTS_KEY, "sales", params], queryFn: async () => unwrap(await ReportEndpoints.sales(params)), enabled, placeholderData: keepPreviousData })
 }
 export function useDashboard(branchId?: string) {
   return useQuery({ queryKey: [REPORTS_KEY, "dashboard", branchId ?? "all"], queryFn: async () => unwrap(await ReportEndpoints.dashboard(branchId)), refetchInterval: 60_000 })

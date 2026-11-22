@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { dateOnly, idParams, optionalText, pageQuery, positiveMoney, queryBool, requiredText, uuid } from "../../../shared/validation/common";
+import { dateOnly, idParams, money, optionalText, pageQuery, positiveMoney, queryBool, requiredText, uuid } from "../../../shared/validation/common";
 import { categoryOf, FINANCE_CATEGORY_KEYS, FINANCE_KINDS, FINANCE_PAYMENT_METHODS } from "../catalog/finance.catalog";
 
 /** Biggest import in one go (a year of daily entries fits). */
@@ -30,11 +30,27 @@ const entryFields = {
     )
     .max(50, "At most 50 people per entry")
     .optional(),
+  /**
+   * What was sold (offline sales): menu items by id (or a typed name for something off the menu), how many, and the price
+   * charged each. The amount must equal the sum of quantity × unit price. Only for other income. [] clears them.
+   */
+  items: z
+    .array(
+      z
+        .object({ itemId: uuid.optional(), name: z.string().trim().min(1).max(160).optional(), quantity: z.number().int().min(1).max(9999), unitPrice: money })
+        .refine((l) => Boolean(l.itemId || l.name), "Choose an item or type its name")
+    )
+    .max(100, "At most 100 items on one sale")
+    .optional(),
   reference: optionalText(80),
   notes: optionalText(2000),
 };
 
-const entryBody = z.object(entryFields).refine(matchesKind, kindMismatch);
+const itemsOnlyForIncome = (e: { kind?: string; items?: unknown[] }) => !e.items?.length || !e.kind || e.kind === "income";
+const entryBody = z
+  .object(entryFields)
+  .refine(matchesKind, kindMismatch)
+  .refine(itemsOnlyForIncome, { message: "Items can only be listed on a sale (other income)", path: ["items"] });
 
 export const listEntriesSchema = z.object({
   query: z.object({
@@ -47,6 +63,8 @@ export const listEntriesSchema = z.object({
     to: dateOnly.optional(),
     /** json = a page of entries; xlsx = every matching entry as an Excel workbook (needs reports.export). */
     format: z.enum(["json", "xlsx"]).default("json"),
+    /** date = by the day the money moved (the ledger); recorded = by when it was entered, newest first (the Record sales page). */
+    sort: z.enum(["date", "recorded"]).default("date"),
   }),
 });
 
@@ -115,3 +133,6 @@ export const mergePartySchema = z.object({ params: idParams, body: z.object({ in
 export type PartyLineBody = NonNullable<EntryBody["parties"]>[number];
 export type PartyBody = z.infer<typeof createPartySchema>["body"];
 export type UpdatePartyBody = z.infer<typeof updatePartySchema>["body"];
+
+export type SaleItemLineBody = NonNullable<EntryBody["items"]>[number];
+export const saleItemsQuerySchema = z.object({ query: z.object({ branchId: uuid.optional() }) });
