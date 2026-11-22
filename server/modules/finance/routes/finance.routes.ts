@@ -5,6 +5,8 @@ import { validate } from "../../../shared/middleware/validate.middleware";
 import { FinanceController } from "../controllers/finance.controller";
 import {
   analyticsSchema,
+  categoryIdSchema,
+  createCategorySchema,
   createEntrySchema,
   createPartySchema,
   entryIdSchema,
@@ -14,6 +16,7 @@ import {
   partyIdSchema,
   saleItemsQuerySchema,
   setBudgetsSchema,
+  updateCategorySchema,
   updateEntrySchema,
   updatePartySchema,
 } from "../validators/finance.schema";
@@ -28,6 +31,9 @@ const viewOrSales = requireAny("finance.view", "finance.record_sales");
 const manageOrSales = requireAny("finance.manage", "finance.record_sales");
 
 router.get("/categories", authMiddleware, viewOrSales, FinanceController.categories);
+router.post("/categories", authMiddleware, requirePermission("finance.manage"), validate(createCategorySchema), FinanceController.createCategory);
+router.put("/categories/:id", authMiddleware, requirePermission("finance.manage"), validate(updateCategorySchema), FinanceController.updateCategory);
+router.delete("/categories/:id", authMiddleware, requirePermission("finance.manage"), validate(categoryIdSchema), FinanceController.removeCategory);
 router.get("/analytics", authMiddleware, requirePermission("finance.view"), validate(analyticsSchema), FinanceController.analytics);
 
 router.get("/entries", authMiddleware, viewOrSales, validate(listEntriesSchema), FinanceController.list);

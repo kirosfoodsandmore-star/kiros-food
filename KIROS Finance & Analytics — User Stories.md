@@ -25,7 +25,7 @@ Each story reads `As an owner (or manager, or staff member), I want … so that 
 | Permission | What it allows |
 | --- | --- |
 | `finance.view` | Open Capital & expenses and Analytics, read every entry and budget, see all the analytics and the vendors & customers list with totals |
-| `finance.manage` | Record, import, edit and delete any entry; set budgets; add, rename, merge and remove vendors & customers |
+| `finance.manage` | Record, import, edit and delete any entry; set budgets; add, rename, merge and remove vendors & customers; add, rename, regroup, hide and delete categories |
 | `finance.record_sales` | **Sales only:** record other income (walk-in, catering…), split between customers; see every sale at their branches; correct or delete only the sales they recorded themselves, until 6am the next morning. No capital, expenses, budgets, analytics, imports or downloads. |
 | `reports.export` (existing) | Download the books as an Excel file |
 
@@ -36,7 +36,8 @@ The Owner role has everything. No other role gets any finance permission until t
 ## Stage 1 — Switch it on
 
 - [ ] **As the owner, I want the feature live after the next deploy, so that I don't have to set anything up by hand.**
-  - The new database tables are created automatically when the API restarts on Render (the `FinanceLedger` and `FinanceParties` migrations).
+  - The new database tables are created automatically when the API restarts on Render (the `FinanceLedger`, `FinanceParties` and `FinanceCategories` migrations).
+  - The 28 starting categories (listed in Stage 3) are filled in for your restaurant by the same migration, so there is nothing to type before you start. Add your own any time (see **Your own categories** in Stage 3).
   - Any vendor or customer names already typed into entries become saved vendors & customers automatically. Different spellings of the same name ("Mile 12 market", "  mile 12 MARKET ") become one.
   - Sign in as the Owner. Under **Business** you should see **Sales reports**, **Analytics** and **Capital & expenses**.
 
@@ -100,6 +101,8 @@ What to bring in, in this order:
 
 ### Expense categories
 
+These are the starting list. They're stored per restaurant, so you can rename them, move them between groups, hide the ones you never use, and add your own (see **Your own categories** below).
+
 | Group | Categories | Why the group matters |
 | --- | --- | --- |
 | Cost of sales | Ingredients & stock, Packaging | Rises and falls with sales; drives **food cost %** and **gross margin** |
@@ -118,7 +121,7 @@ What to bring in, in this order:
   5. Click **Import N rows**. You should see "Imported N entries", and the totals at the top update.
 
 - [ ] **As the owner, I want the template to stop typing mistakes before they happen, so that most rows import first time.**
-  - **Category**, **Paid by** and **Branch** are dropdowns. Category lists all 28 categories; Branch lists your own branches (blank = whole business).
+  - **Category**, **Paid by** and **Branch** are dropdowns. Category lists your categories that are switched on (the 28 starting ones plus any you added, minus any you hid); Branch lists your own branches (blank = whole business). The template reflects the categories at the moment you download it, so download a fresh one after adding categories.
   - **Date** only accepts a real date, not in the future. **Amount** only accepts a number above zero. Excel shows a message if something else is typed.
   - Each column heading has a comment explaining what goes in it. The header row stays frozen while you scroll.
   - The template also has an **Example** sheet with a finished month, a **Categories** sheet listing every category with its type and group, and a **How to fill** sheet. Only **Entries** is ever imported.
@@ -148,6 +151,37 @@ What to bring in, in this order:
   - Up to 1,000 rows per import and a 5 MB file. Split bigger histories into one file per year.
   - All rows in one import are saved together or not at all.
   - The audit log records "Imported N finance entries (total)".
+
+### Your own categories
+
+The 28 starting categories are saved in your restaurant's own list (they're not fixed in the app), so you can shape it to the way you run the business.
+
+- [ ] **As the owner, I want to add a category the list doesn't have, so that I can track something specific (e.g. "Generator servicing" or "Staff transport").**
+  1. **Capital & expenses → Categories**. At the top, type the name, choose the type (Expense, Other income, Capital in or Money out) and click **Add**.
+  2. For an **expense**, also choose where it sits in your profit: **Cost of sales** (ingredients, packaging), **Running costs** (rent, pay, fuel) or **Assets & fit-out** (one-off equipment, not a monthly cost). The hint under the box explains each.
+  3. For **other income**, switch on **Counts as a sale** if it's a sale (walk-in, catering, events). Sales show up in **Sales reports**, the **Dashboard** and **Best sellers**, and can list the menu items sold. Leave it off for things like interest or grants.
+  4. You see "Added <name>", and it's in the list marked **Yours**. It's now in the **Record** dropdown, **Budgets** (expenses) and the next Excel template you download.
+  - Names must be at least 2 characters. Two categories of the same type can't share a name (capitals don't matter): you'll be told it already exists.
+
+- [ ] **As the owner, I want to rename a category, so that it uses my own words.**
+  - Click the pencil next to it, type the new name, press Enter. Everything already recorded under it follows: entries, budgets, analytics and the Excel download all show the new name. Nothing is re-categorised, because entries are tied to the category, not its wording.
+
+- [ ] **As the owner, I want to move an expense to a different group, so that profit, food cost and break-even reflect how I see it.**
+  - Use the group dropdown on its row. A toast says past entries follow it: moving "Delivery & transport" from Running costs to Cost of sales changes how every past entry in it counts in gross margin and food cost %.
+  - Two things are fixed on purpose: **Salaries & wages** is the one used for the labour-cost % (a custom category can't count as labour), and a category's type (expense, income…) can't be changed once created.
+
+- [ ] **As the owner, I want to hide a category I never use, so that the Record list is short.**
+  - Click the eye icon: the name is struck through and tagged **Hidden**. It's no longer offered for new entries, in **Budgets** (unless it still has a budget) or in the Excel template. Everything recorded under it stays: old entries still show its name, it still counts in analytics, it still appears in the category filter (marked "hidden"), and editing an old entry keeps it selected ("… (hidden)"). Click the eye again to bring it back.
+  - The built-in 28 can be hidden and renamed but never deleted.
+
+- [ ] **As the owner, I want to delete a category I added by mistake, so that the list stays clean.**
+  - Only a category **you added** and that **nothing uses** can be deleted. The bin icon is greyed out with "In use: hide it instead" as soon as it has an entry or a budget, and the server refuses too. Each row shows how many entries it has.
+
+- [ ] **As the owner, I want a "sale" category to behave like a sale everywhere, so that the numbers agree.**
+  - Switch **Sale** on or off on any other-income row. Sales reports, the Dashboard, Best sellers, the item picker on **Record a sale** and what cashiers see all follow that switch. Turning it off for a category that already has entries takes those entries out of the sales figures (they remain in the books as other income), so do this deliberately.
+
+- [ ] **As a person who can only view finance, I want to see the categories without changing them.**
+  - Anyone with `finance.view` can open **Categories** and read the list and the usage counts; the add box, pencil, eye, group, Sale switch and bin appear only with `finance.manage`. The server enforces it as well.
 
 ---
 
@@ -490,6 +524,7 @@ Use this on a test restaurant (or a staging copy), not your live books. It gives
 - Amounts must be more than zero (entered in naira, stored in kobo).
 - Dates can be in the past, never in the future.
 - The category must belong to the kind (e.g. Rent is only ever an expense).
+- Categories belong to your restaurant. The built-in 28 can be renamed, regrouped and hidden but not deleted; one you added can be deleted only while no entry or budget uses it. A hidden category can't be chosen for a new entry, but old entries keep it. Names must be unique within a type, ignoring capitals. Adding, renaming, regrouping, hiding and deleting are written to the audit log, and need `finance.manage`.
 - Branch-limited staff can only file and see entries for their branches.
 - Recording, importing, editing, deleting, budgets and the vendors & customers list need `finance.manage`; the Excel download needs `reports.export`.
 - `finance.record_sales` alone allows only: recording other income, and seeing every sale at the person's branches, and correcting / deleting only the sales that person recorded, until the sales day rolls over at 6am. Everything else is refused by the server, not just hidden.
@@ -515,4 +550,6 @@ These aren't covered yet. Decide them before relying on the numbers for anything
 9. **Items in Excel imports.** The import brings in sales as plain amounts; it doesn't read items. Use the form (or ask for item import if you have a lot of history by item). The **Sales reports** page, grouped by item, still counts online orders only: **Best sellers** in Analytics is where the two are combined.
 10. **Items with options.** A build-your-own salad is one menu item with a base price. Pick it and type the final price charged; the choices (dressing, protein…) aren't recorded per sale yet.
 11. **Cashier corrections** are limited to 6am the next morning (decided: the short window stops a sale being recorded, the cash taken, and the sale deleted days later). Later corrections go to a manager. The 6am is fixed for now, not a setting; if you trade through the night, say so and we'll move it.
-12. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.
+12. **Custom categories and labour cost.** The labour-cost % is read from **Salaries & wages** only. If you add "Casual labour" as its own category, it counts as a running cost but not in the labour %. Put casual pay under Salaries & wages, or tell us if labour should be a setting you can tick per category.
+13. **Moving a category re-states history.** Changing an expense's group re-classes all its past entries in profit and cost ratios (there's no "from this date on"). Hide the old one and add a new one if you want history left as it was.
+14. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.

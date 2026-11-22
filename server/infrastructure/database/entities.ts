@@ -31,6 +31,7 @@ import { BankAccountEntity } from "../../modules/payment/entities/bankAccount.en
 import { PaymentEntity } from "../../modules/payment/entities/payment.entity";
 import { PaymentSettingsEntity } from "../../modules/payment/entities/paymentSettings.entity";
 import { FinanceBudgetEntity } from "../../modules/finance/entities/financeBudget.entity";
+import { FinanceCategoryEntity } from "../../modules/finance/entities/financeCategory.entity";
 import { FinanceEntryEntity } from "../../modules/finance/entities/financeEntry.entity";
 import { FinanceEntryItemEntity } from "../../modules/finance/entities/financeEntryItem.entity";
 import { FinanceEntryPartyEntity, FinancePartyEntity } from "../../modules/finance/entities/financeParty.entity";
@@ -79,6 +80,7 @@ export const ALL_ENTITIES: EntitySchema[] = [
   // Finance (the business's own books)
   FinanceEntryEntity,
   FinanceBudgetEntity,
+  FinanceCategoryEntity,
   FinancePartyEntity,
   FinanceEntryPartyEntity,
   FinanceEntryItemEntity,

@@ -1,7 +1,8 @@
 // The books as an Excel workbook: an "Entries" sheet laid out like the import template (so an export can be edited
 // and imported again), and a "Summary" sheet with totals by type and category for the same filters. Pure: no I/O.
 import ExcelJS from "exceljs";
-import { categoryOf, EXPENSE_GROUP_LABELS, FINANCE_KIND_LABELS, type FinanceKind } from "../catalog/finance.catalog";
+import { EXPENSE_GROUP_LABELS, FINANCE_KIND_LABELS, type FinanceKind } from "../catalog/finance.catalog";
+import type { Catalog } from "../domain/catalog";
 import type { FinanceEntry } from "../entities/financeEntry.entity";
 
 export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -12,6 +13,8 @@ const MONEY = "#,##0.00";
 const IN: FinanceKind[] = ["capital", "income"];
 
 export interface ExportInput {
+  /** The restaurant's categories: their names and expense groups. */
+  catalog: Catalog;
   entries: FinanceEntry[];
   /** Each entry's split between vendors / customers. An entry split between several gets one row per person. */
   lines: Array<{ entryId: string; name: string; amount: number }>;
@@ -66,7 +69,7 @@ export async function buildEntriesWorkbook(input: ExportInput): Promise<Buffer> 
     return lines.length ? lines.map((l) => ({ e, vendor: l.name, amount: l.amount })) : [{ e, vendor: e.party ?? "", amount: e.amount }];
   });
   for (const { e, vendor, amount } of rows) {
-    const cat = categoryOf(e.category);
+    const cat = input.catalog.get(e.category);
     ws.addRow({
       date: utcDate(e.entryDate),
       category: cat?.label ?? e.category,
@@ -137,7 +140,7 @@ export async function buildEntriesWorkbook(input: ExportInput): Promise<Buffer> 
     const rows = [...totals.values()].filter((t) => t.kind === kind).sort((a, b) => b.amount - a.amount);
     if (!rows.length) continue;
     for (const t of rows) {
-      const cat = categoryOf(t.category);
+      const cat = input.catalog.get(t.category);
       sum.getRow(r).values = [FINANCE_KIND_LABELS[kind], cat?.label ?? t.category, cat?.group ? EXPENSE_GROUP_LABELS[cat.group] : "", t.count, naira(t.amount)];
       r++;
     }

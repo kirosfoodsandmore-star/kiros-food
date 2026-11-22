@@ -1,7 +1,7 @@
 // Pure business-analytics maths over ledger + order aggregates. No I/O.
 // Money is kobo. Ratios are 0–1 (null when the denominator is zero).
 import { addDays } from "../../../shared/utils/dates";
-import { categoryLabel, categoryOf, type ExpenseGroup } from "../catalog/finance.catalog";
+import type { ExpenseGroup } from "../catalog/finance.catalog";
 import type { Granularity } from "../validators/finance.schema";
 
 export interface LedgerAmount {
@@ -40,11 +40,11 @@ export function ratio(part: number, whole: number): number | null {
   return whole > 0 ? part / whole : null;
 }
 
-export function groupOf(category: string): ExpenseGroup {
-  return categoryOf(category)?.group ?? "operating";
-}
-
-export function totalsOf(ledger: LedgerAmount[], appRevenue: number, orders: number): PeriodTotals {
+/**
+ * Totals for a set of ledger rows. `groupOf` says where each expense category sits on the profit-and-loss; it's the
+ * restaurant's own list (the owner can move a category between cost of sales, running costs and assets).
+ */
+export function totalsOf(ledger: LedgerAmount[], appRevenue: number, orders: number, groupOf: (category: string) => ExpenseGroup): PeriodTotals {
   let otherIncome = 0, costOfSales = 0, operating = 0, capex = 0, salaries = 0, capitalIn = 0, withdrawals = 0;
   for (const r of ledger) {
     if (r.kind === "income") otherIncome += r.amount;
@@ -156,6 +156,8 @@ export interface InsightInput {
   months: number;
   hasLedger: boolean;
   fmt: (kobo: number) => string;
+  /** A category's name, from the restaurant's own list. */
+  categoryLabel: (category: string) => string;
 }
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
@@ -201,13 +203,13 @@ export function buildInsights(i: InsightInput): Insight[] {
     .sort((a, b) => b.amount / (b.budget! * i.months) - a.amount / (a.budget! * i.months));
   for (const e of overBudget.slice(0, 2)) {
     const planned = Math.round(e.budget! * i.months);
-    out.push({ tone: "warning", title: `${categoryLabel(e.category)} is over budget`, detail: `${fmt(e.amount)} spent against ${fmt(planned)} planned for this period (${pct(e.amount / planned - 1)} over).` });
+    out.push({ tone: "warning", title: `${i.categoryLabel(e.category)} is over budget`, detail: `${fmt(e.amount)} spent against ${fmt(planned)} planned for this period (${pct(e.amount / planned - 1)} over).` });
   }
 
   const totalExp = i.expenseByCategory.reduce((s, e) => s + e.amount, 0);
   const top = [...i.expenseByCategory].sort((a, b) => b.amount - a.amount)[0];
   if (top && totalExp > 0 && top.amount / totalExp >= 0.3) {
-    out.push({ tone: "info", title: `${categoryLabel(top.category)} is your biggest cost`, detail: `${pct(top.amount / totalExp)} of all spending (${fmt(top.amount)}).` });
+    out.push({ tone: "info", title: `${i.categoryLabel(top.category)} is your biggest cost`, detail: `${pct(top.amount / totalExp)} of all spending (${fmt(top.amount)}).` });
   }
 
   if (i.breakEvenMonthlyRevenue !== null && i.breakEvenMonthlyRevenue > 0) {

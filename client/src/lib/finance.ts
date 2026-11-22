@@ -207,6 +207,3 @@ export function salesDay(at: Date | string, timeZone: string, startsHour: number
 export function itemsSummary(items: Array<{ name: string; quantity: number }>): string {
   return items.map((i) => `${i.quantity}× ${i.name}`).join(", ")
 }
-
-/** Item categories whose sales are normally made of menu items. */
-export const SALE_ITEM_CATEGORIES = ["offline_sales", "catering"]

@@ -12,7 +12,10 @@ import { formatDateTime, todayIn } from "../../../shared/utils/dates";
 import { AuditService } from "../../audit/services/audit.service";
 import { BranchService } from "../../branch/services/branch.service";
 import { OrganizationRepository } from "../../organization/repositories/organization.repository";
-import { categoryLabel, categoryOf, EXPENSE_GROUP_LABELS, FINANCE_CATEGORIES, FINANCE_KIND_LABELS, FINANCE_PAYMENT_METHODS } from "../catalog/finance.catalog";
+import { EXPENSE_GROUP_LABELS, FINANCE_KIND_LABELS, FINANCE_PAYMENT_METHODS } from "../catalog/finance.catalog";
+import type { Catalog } from "../domain/catalog";
+import type { FinanceKind } from "../catalog/finance.catalog";
+import { CategoryService } from "./category.service";
 import type { FinanceEntry } from "../entities/financeEntry.entity";
 import { FinanceRepository, type NewEntry } from "../repositories/finance.repository";
 import { salesDayOf, SALES_DAY_STARTS_HOUR } from "../domain/salesDay";
@@ -54,7 +57,8 @@ export class FinanceService {
     private readonly audit = AuditService.Instance,
     private readonly branches = BranchService.Instance,
     private readonly parties = PartyRepository.Instance,
-    private readonly saleItems = SaleItemRepository.Instance
+    private readonly saleItems = SaleItemRepository.Instance,
+    private readonly categoryService = CategoryService.Instance
   ) {}
 
   /** Menu items to pick from when recording a sale: this restaurant's active items, limited to the menus a branch serves. */
@@ -150,12 +154,13 @@ export class FinanceService {
     await this.audit.log(actor, { action: "delete", entityType: "finance_party", entityId: id, summary: `Removed "${party.name}" from vendors & customers` });
   }
 
-  categories() {
+  /** Everything the screens need to build their pickers: kinds, groups, payment methods and this restaurant's own categories. */
+  async categories(actor: Actor) {
     return {
       kinds: Object.entries(FINANCE_KIND_LABELS).map(([key, label]) => ({ key, label })),
       groups: Object.entries(EXPENSE_GROUP_LABELS).map(([key, label]) => ({ key, label })),
       paymentMethods: FINANCE_PAYMENT_METHODS,
-      categories: FINANCE_CATEGORIES,
+      categories: await this.categoryService.list(actor),
       /** Local hour the sales day rolls over; sales-only staff can change a sale until then (see domain/salesDay.ts). */
       salesDayStartsHour: SALES_DAY_STARTS_HOUR,
     };
@@ -173,6 +178,7 @@ export class FinanceService {
     }
     if (q.format === "xlsx") {
       assertPermission(actor, "reports.export");
+      const catalog = await this.categoryService.catalog(actor.organizationId);
       const [all, org, branches] = await Promise.all([
         this.repo.list(actor.organizationId, scope, { ...q, page: 1, limit: 20_000 }),
         this.organizations.findById(actor.organizationId),
@@ -183,13 +189,14 @@ export class FinanceService {
       const filters: Array<[string, string]> = [
         ["Period", q.from || q.to ? `${q.from ?? "the start"} to ${q.to ?? todayIn(tz)}` : "All dates"],
         ["Type", q.kind ? FINANCE_KIND_LABELS[q.kind] : "Everything"],
-        ["Category", q.category ? categoryLabel(q.category) : "All categories"],
+        ["Category", q.category ? catalog.label(q.category) : "All categories"],
         ["Branch", q.branchId ? (names.get(q.branchId) ?? "One branch") : "All branches"],
         ...(q.search ? [["Search", q.search] as [string, string]] : []),
         ["Entries", String(all.data.length)],
       ];
       const [lines, items] = await Promise.all([this.parties.linesFor(all.data.map((e) => e.id)), this.saleItems.linesFor(all.data.map((e) => e.id))]);
       const body = await buildEntriesWorkbook({
+        catalog,
         entries: all.data,
         lines,
         items,
@@ -202,6 +209,17 @@ export class FinanceService {
     }
     const page = await this.repo.list(actor.organizationId, scope, q);
     return { data: await this.withParties(page.data), meta: page.meta, sum: page.sum };
+  }
+
+  /** Each entry's category must be one of the restaurant's, of the entry's kind, and not hidden. */
+  private assertCategories(catalog: Catalog, rows: Array<{ kind: FinanceKind; category: string }>): void {
+    rows.forEach((r, i) => {
+      const at = rows.length > 1 ? `Row ${i + 1}: ` : "";
+      const c = catalog.get(r.category);
+      if (!c) throw AppError.badRequest(`${at}"${r.category}" isn't one of your categories`);
+      if (c.kind !== r.kind) throw AppError.badRequest(`${at}"${c.label}" is ${/^[aeiou]/i.test(FINANCE_KIND_LABELS[c.kind]) ? "an" : "a"} ${FINANCE_KIND_LABELS[c.kind].toLowerCase()} category, not ${FINANCE_KIND_LABELS[r.kind].toLowerCase()}`);
+      if (!c.isActive) throw AppError.badRequest(`${at}"${c.label}" is hidden. Show it again under Categories, or pick another`);
+    });
   }
 
   private async assertDate(actor: Actor, date: string): Promise<void> {
@@ -296,13 +314,15 @@ export class FinanceService {
   async create(actor: Actor, b: EntryBody): Promise<FinanceEntryDTO> {
     this.assertMayRecord(actor, b.kind);
     await this.assertDate(actor, b.entryDate);
+    const catalog = await this.categoryService.catalog(actor.organizationId);
+    this.assertCategories(catalog, [b]);
     const entry = await inTransaction(async (tx) => {
       const [resolved] = await this.resolveParties(actor, [b], tx);
       const [itemLines] = await this.resolveItems(actor, [b], tx);
       const saved = await this.repo.create({ ...this.toNew(actor, b), party: joinNames(resolved?.names ?? []) }, tx);
       if (resolved?.lines.length) await this.parties.replaceLines(saved.id, resolved.lines, tx);
       if (itemLines?.lines.length) await this.saleItems.replaceLines(saved.id, itemLines.lines, tx);
-      await this.audit.log(actor, { action: "create", entityType: "finance_entry", entityId: saved.id, branchId: saved.branchId, summary: `Recorded ${FINANCE_KIND_LABELS[saved.kind].toLowerCase()} "${saved.title}" (${categoryLabel(saved.category)}, ${saved.amount} kobo, ${saved.entryDate}${saved.party ? `, ${saved.party}` : ""})`, after: b }, tx);
+      await this.audit.log(actor, { action: "create", entityType: "finance_entry", entityId: saved.id, branchId: saved.branchId, summary: `Recorded ${FINANCE_KIND_LABELS[saved.kind].toLowerCase()} "${saved.title}" (${catalog.label(saved.category)}, ${saved.amount} kobo, ${saved.entryDate}${saved.party ? `, ${saved.party}` : ""})`, after: b }, tx);
       return saved;
     });
     return (await this.withParties([entry]))[0];
@@ -312,6 +332,7 @@ export class FinanceService {
     assertPermission(actor, "finance.manage");
     const latest = rows.reduce((m, r) => (r.entryDate > m ? r.entryDate : m), "0000-00-00");
     await this.assertDate(actor, latest);
+    this.assertCategories(await this.categoryService.catalog(actor.organizationId), rows);
     const entries = rows.map((r) => this.toNew(actor, r));
     const total = entries.reduce((s, e) => s + e.amount, 0);
     const imported = await inTransaction(async (tx) => {
@@ -335,7 +356,11 @@ export class FinanceService {
     else if (branchScope(actor) !== null) throw AppError.forbidden("This is a business-wide entry");
     const kind = b.kind ?? entry.kind;
     const category = b.category ?? entry.category;
-    if (categoryOf(category)?.kind !== kind) throw AppError.badRequest("That category does not belong to this kind of entry");
+    // Keeping a category that has since been hidden is fine; moving an entry INTO one is not.
+    const catalog = await this.categoryService.catalog(actor.organizationId);
+    const cat = catalog.get(category);
+    if (!cat || cat.kind !== kind) throw AppError.badRequest("That category does not belong to this kind of entry");
+    if (b.category && b.category !== entry.category) this.assertCategories(catalog, [{ kind, category }]);
     if (b.branchId) assertBranchAccess(actor, b.branchId);
     if (b.entryDate) await this.assertDate(actor, b.entryDate);
     const amount = b.amount ?? entry.amount;
@@ -381,6 +406,8 @@ export class FinanceService {
 
   async setBudgets(actor: Actor, rows: BudgetRow[]) {
     assertPermission(actor, "finance.manage");
+    const catalog = await this.categoryService.catalog(actor.organizationId);
+    for (const r of rows) if (catalog.kindOf(r.category) !== "expense") throw AppError.badRequest("Budgets are for expense categories only");
     await inTransaction(async (tx) => {
       await this.repo.replaceBudgets(actor.organizationId, rows, tx);
       await this.audit.log(actor, { action: "update", entityType: "finance_budget", summary: `Updated monthly budgets (${rows.filter((r) => r.monthlyAmount > 0).length} categories)`, after: Object.fromEntries(rows.map((r) => [r.category, r.monthlyAmount])) }, tx);

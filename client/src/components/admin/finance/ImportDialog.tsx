@@ -46,7 +46,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const fileRef = useRef<HTMLInputElement>(null)
   const parsed = useMemo(() => {
     const today = format(new Date(), "yyyy-MM-dd")
-    const cats = catalog.data?.categories ?? []
+    const cats = (catalog.data?.categories ?? []).filter((c) => c.isActive)
     if (loaded) return buildImportFromTable(loaded.table, cats, branches ?? [], today, loaded.lines)
     return text.trim() ? buildImport(text, cats, branches ?? [], today) : null
   }, [text, loaded, catalog.data, branches])
@@ -59,7 +59,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     setBusy("template")
     try {
       const { buildTemplate } = await import("@/lib/financeExcel")
-      saveBlob(await buildTemplate(catalog.data, branches ?? []), "kiros-finance-template.xlsx")
+      saveBlob(await buildTemplate({ ...catalog.data, categories: catalog.data.categories.filter((c) => c.isActive) }, branches ?? []), "kiros-finance-template.xlsx")
     } catch (err) {
       toast.error(`Couldn't make the template: ${(err as Error).message}`)
     } finally {

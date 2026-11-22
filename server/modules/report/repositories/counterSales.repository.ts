@@ -2,7 +2,6 @@
 // numbers in report.repository.ts, so the Sales reports page can show both together. Money is kobo.
 import { SqlParams } from "../../../infrastructure/database/sql";
 import { db } from "../../../infrastructure/database/transaction";
-import { COUNTER_SALE_CATEGORIES } from "../../finance/catalog/finance.catalog";
 
 export interface CounterScope {
   organizationId: string;
@@ -42,7 +41,8 @@ export class CounterSalesRepository {
       `e.organization_id = ${p.add(s.organizationId)}`,
       `e.deleted_at IS NULL`,
       `e.kind = 'income'`,
-      `e.category = ANY(${p.add([...COUNTER_SALE_CATEGORIES])}::text[])`,
+      // Income categories this restaurant marks as sales (walk-in and catering unless the owner changed it).
+      `e.category IN (SELECT c.key FROM finance_categories c WHERE c.organization_id = e.organization_id AND c.is_sale)`,
       `e.entry_date BETWEEN ${p.add(s.from)}::date AND ${p.add(s.to)}::date`,
     ];
     if (s.branchIds) where.push(`e.branch_id = ANY(${p.add(s.branchIds)}::uuid[])`);

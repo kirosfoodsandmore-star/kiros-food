@@ -5,11 +5,31 @@ export type FinanceKind = "capital" | "expense" | "income" | "withdrawal"
 export type ExpenseGroup = "cost_of_sales" | "operating" | "capex"
 export type Granularity = "day" | "week" | "month"
 
+/** One of the restaurant's own categories (some came with the app, the rest were added by the owner). */
 export interface FinanceCategory {
+  id: string
+  /** The short code stored on entries and budgets. Never changes. */
   key: string
   kind: FinanceKind
   label: string
-  group?: ExpenseGroup
+  /** Expenses only. */
+  group?: ExpenseGroup | null
+  /** Other income only: counts as a sale in Sales reports and the Dashboard. */
+  isSale: boolean
+  isBuiltin: boolean
+  /** Hidden categories aren't offered for new entries; old entries keep showing them. */
+  isActive: boolean
+  sortOrder: number
+  /** Entries and budgets using it (finance.view only). */
+  entries?: number
+  budgets?: number
+}
+
+export interface CategoryInput {
+  label: string
+  kind: FinanceKind
+  group?: ExpenseGroup | null
+  isSale?: boolean
 }
 
 export interface FinanceCatalog {

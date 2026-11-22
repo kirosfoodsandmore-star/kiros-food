@@ -1,10 +1,17 @@
 import { actorOf, handle, input, Paged } from "../../../shared/http/handler";
+import { CategoryService } from "../services/category.service";
 import { FinanceService } from "../services/finance.service";
 import { FinanceAnalyticsService } from "../services/financeAnalytics.service";
-import { analyticsSchema, createEntrySchema, createPartySchema, entryIdSchema, importEntriesSchema, listEntriesSchema, mergePartySchema, partyIdSchema, saleItemsQuerySchema, setBudgetsSchema, updateEntrySchema, updatePartySchema } from "../validators/finance.schema";
+import { analyticsSchema, categoryIdSchema, createCategorySchema, createEntrySchema, createPartySchema, entryIdSchema, importEntriesSchema, listEntriesSchema, mergePartySchema, partyIdSchema, saleItemsQuerySchema, setBudgetsSchema, updateCategorySchema, updateEntrySchema, updatePartySchema } from "../validators/finance.schema";
 
 export class FinanceController {
-  static categories = handle("Finance categories", async () => FinanceService.Instance.categories());
+  static categories = handle("Finance categories", (req) => FinanceService.Instance.categories(actorOf(req)));
+  static createCategory = handle("Category added", (req) => CategoryService.Instance.create(actorOf(req), input(req, createCategorySchema).body), 201);
+  static updateCategory = handle("Category saved", (req) => {
+    const { params, body } = input(req, updateCategorySchema);
+    return CategoryService.Instance.update(actorOf(req), params.id, body);
+  });
+  static removeCategory = handle("Category deleted", (req) => CategoryService.Instance.remove(actorOf(req), input(req, categoryIdSchema).params.id));
   static list = handle("Finance entries fetched", async (req) => {
     const result = await FinanceService.Instance.list(actorOf(req), input(req, listEntriesSchema).query);
     if (!("meta" in result)) return result; // CSV download

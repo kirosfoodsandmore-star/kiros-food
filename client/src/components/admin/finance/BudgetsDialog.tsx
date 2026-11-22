@@ -18,7 +18,9 @@ export function BudgetsDialog({ open, onOpenChange, readOnly = false }: { open: 
   useEffect(() => {
     if (open) setValues(Object.fromEntries((budgets ?? []).map((b) => [b.category, toMajor(b.monthlyAmount)])))
   }, [open, budgets])
-  const expenseCats = (catalog.data?.categories ?? []).filter((c) => c.kind === "expense")
+  // Hidden categories are left out, unless they still carry a budget.
+  const budgeted = new Set((budgets ?? []).map((b) => b.category))
+  const expenseCats = (catalog.data?.categories ?? []).filter((c) => c.kind === "expense" && (c.isActive || budgeted.has(c.key)))
   const total = Object.values(values).reduce((s, v) => s + toMinor(v || "0"), 0)
 
   const save = async () => {

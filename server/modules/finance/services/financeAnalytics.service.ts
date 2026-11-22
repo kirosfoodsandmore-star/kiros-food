@@ -7,10 +7,11 @@ import { addDays, resolveRange, todayIn } from "../../../shared/utils/dates";
 import { formatMoney } from "../../../shared/utils/money";
 import { BranchService } from "../../branch/services/branch.service";
 import { OrganizationRepository } from "../../organization/repositories/organization.repository";
-import { categoryLabel, EXPENSE_GROUP_LABELS, EXPENSE_GROUPS, FINANCE_KIND_LABELS } from "../catalog/finance.catalog";
-import { autoGranularity, bucketList, buildInsights, groupOf, monthsIn, previousRange, ratio, totalsOf, type LedgerAmount } from "../domain/analytics";
+import { EXPENSE_GROUP_LABELS, EXPENSE_GROUPS, FINANCE_KIND_LABELS } from "../catalog/finance.catalog";
+import { autoGranularity, bucketList, buildInsights, monthsIn, previousRange, ratio, totalsOf, type LedgerAmount } from "../domain/analytics";
 import { FinanceRepository } from "../repositories/finance.repository";
 import { SaleItemRepository } from "../repositories/saleItem.repository";
+import { CategoryService } from "./category.service";
 import type { AnalyticsQuery } from "../validators/finance.schema";
 
 const sumBy = <T>(rows: T[], pick: (r: T) => number) => rows.reduce((s, r) => s + pick(r), 0);
@@ -21,7 +22,8 @@ export class FinanceAnalyticsService {
     private readonly repo = FinanceRepository.Instance,
     private readonly sold = SaleItemRepository.Instance,
     private readonly organizations = OrganizationRepository.Instance,
-    private readonly branches = BranchService.Instance
+    private readonly branches = BranchService.Instance,
+    private readonly categories = CategoryService.Instance
   ) {}
 
   async analytics(actor: Actor, q: AnalyticsQuery) {
@@ -31,6 +33,9 @@ export class FinanceAnalyticsService {
     const fmt = (kobo: number) => formatMoney(kobo, org?.currencySymbol ?? "₦", org?.currencyDecimals ?? 0);
     const branchIds = branchScope(actor, q.branchId);
     const organizationId = actor.organizationId;
+    // The restaurant's own categories: their names, and where each expense sits (cost of sales, running costs, assets).
+    const catalog = await this.categories.catalog(organizationId);
+    const groupOf = catalog.groupOf;
 
     const [firstEntry, firstOrder] = await Promise.all([this.repo.firstEntryDate(organizationId, branchIds), this.repo.firstOrderDate(organizationId, branchIds, timezone)]);
     const firstActivity = [firstEntry, firstOrder].filter((d): d is string => Boolean(d)).sort()[0] ?? null;
@@ -65,12 +70,12 @@ export class FinanceAnalyticsService {
     ]);
 
     // ── Period totals ────────────────────────────────────────────────────
-    const current = totalsOf(ledger, sumBy(orders, (o) => o.revenue), sumBy(orders, (o) => o.orders));
-    const previous = totalsOf(prevLedger, sumBy(prevOrders, (o) => o.revenue), sumBy(prevOrders, (o) => o.orders));
+    const current = totalsOf(ledger, sumBy(orders, (o) => o.revenue), sumBy(orders, (o) => o.orders), groupOf);
+    const previous = totalsOf(prevLedger, sumBy(prevOrders, (o) => o.revenue), sumBy(prevOrders, (o) => o.orders), groupOf);
     const months = monthsIn(from, to);
 
     // ── All time (up to `to`) ────────────────────────────────────────────
-    const life = totalsOf(allLedger, allRevenue, 0);
+    const life = totalsOf(allLedger, allRevenue, 0, groupOf);
     const cashPosition = life.netCashFlow;
     const paybackRatio = life.capitalIn > 0 ? (life.operatingProfit - life.capex) / life.capitalIn : null;
 
@@ -88,7 +93,7 @@ export class FinanceAnalyticsService {
     const ordersBy = new Map(orders.map((o) => [o.bucket, o]));
     const rawSeries = buckets.map((bucket) => {
       const o = ordersBy.get(bucket);
-      const t = totalsOf(ledgerBy.get(bucket) ?? [], o?.revenue ?? 0, o?.orders ?? 0);
+      const t = totalsOf(ledgerBy.get(bucket) ?? [], o?.revenue ?? 0, o?.orders ?? 0, groupOf);
       return {
         bucket,
         appRevenue: t.appRevenue,
@@ -130,7 +135,7 @@ export class FinanceAnalyticsService {
     const expenseByCategory = [...expenseCats]
       .map((category) => ({
         category,
-        label: categoryLabel(category),
+        label: catalog.label(category),
         group: groupOf(category),
         amount: expNow.get(category) ?? 0,
         previous: expPrev.get(category) ?? 0,
@@ -142,7 +147,7 @@ export class FinanceAnalyticsService {
       .sort((a, b) => b.amount - a.amount);
     const expenseByGroup = EXPENSE_GROUPS.map((group) => ({ group, label: EXPENSE_GROUP_LABELS[group], amount: sumBy(expenseByCategory.filter((e) => e.group === group), (e) => e.amount) }));
     const incomeNow = sumCats(ledger, "income");
-    const revenueSources = [{ key: "app", label: "Online orders (this app)", amount: current.appRevenue }, ...[...incomeNow].map(([key, amount]) => ({ key, label: categoryLabel(key), amount }))]
+    const revenueSources = [{ key: "app", label: "Online orders (this app)", amount: current.appRevenue }, ...[...incomeNow].map(([key, amount]) => ({ key, label: catalog.label(key), amount }))]
       .filter((r) => r.amount > 0)
       .sort((a, b) => b.amount - a.amount);
 
@@ -157,7 +162,7 @@ export class FinanceAnalyticsService {
     for (const l of ledgerBranches) rowFor(l.branchId).ledger.push(l);
     const branches = [...branchRows.values()]
       .map((b) => {
-        const t = totalsOf(b.ledger, b.appRevenue, b.orders);
+        const t = totalsOf(b.ledger, b.appRevenue, b.orders, groupOf);
         return { branchId: b.branchId, name: b.name, orders: b.orders, revenue: t.revenue, expenses: t.costOfSales + t.operating, capex: t.capex, operatingProfit: t.operatingProfit, operatingMargin: t.operatingMargin };
       })
       .sort((a, b) => (a.branchId === null ? 1 : b.branchId === null ? -1 : b.revenue - a.revenue));
@@ -165,7 +170,7 @@ export class FinanceAnalyticsService {
     let runningCapital = 0;
     const fundingHistory = funding.map((e) => {
       runningCapital += e.kind === "capital" ? e.amount : -e.amount;
-      return { id: e.id, date: e.entryDate, kind: e.kind, kindLabel: FINANCE_KIND_LABELS[e.kind], category: e.category, categoryLabel: categoryLabel(e.category), title: e.title, party: e.party, amount: e.amount, netCapital: runningCapital };
+      return { id: e.id, date: e.entryDate, kind: e.kind, kindLabel: FINANCE_KIND_LABELS[e.kind], category: e.category, categoryLabel: catalog.label(e.category), title: e.title, party: e.party, amount: e.amount, netCapital: runningCapital };
     });
 
     const busiest = heat.reduce<{ weekday: number; hour: number; orders: number } | null>((best, h) => (!best || h.orders > best.orders ? h : best), null);
@@ -183,6 +188,7 @@ export class FinanceAnalyticsService {
       months,
       hasLedger: allLedger.length > 0,
       fmt,
+      categoryLabel: catalog.label,
     });
 
     return {

@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useBranches } from "@/hooks/useAdminBranches"
 import { useFinanceCatalog, useFinanceMutations, useFinanceParties, useSaleMenu } from "@/hooks/useFinance"
 import { useAdminCurrency } from "@/hooks/useFormatters"
-import { KIND_HINTS, KIND_LABELS, PAYMENT_METHOD_LABELS, SALE_ITEM_CATEGORIES } from "@/lib/finance"
+import { KIND_HINTS, KIND_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/finance"
 import { formatMoney, toMajor, toMinor } from "@/lib/money"
 import { cn } from "@/lib/utils"
 import type { FinanceEntry, FinanceKind, PartyLineInput, SaleItemInput } from "@/types/finance.types"
@@ -113,7 +113,7 @@ export function EntryDialog({ open, onOpenChange, entry, defaultKind = "expense"
   const wholeBusinessAllowed = Boolean(session?.user.allBranches || can("*"))
   const firstBranch = wholeBusinessAllowed ? NONE : (branches?.[0]?.id ?? NONE)
   // A sales-only form starts on the usual sale category.
-  const startCategory = kinds.length === 1 && kinds[0] === "income" ? "offline_sales" : ""
+  const startCategory = kinds.length === 1 && kinds[0] === "income" ? (catalog.active.find((c) => c.kind === "income" && c.isSale)?.key ?? "") : ""
   const [d, setD] = useState<Draft>(() => draftOf(entry, defaultKind, firstBranch, startCategory))
   // Fill the form only when the dialog opens: a background refetch (e.g. on returning to the tab) must never wipe
   // what's been typed.
@@ -130,7 +130,8 @@ export function EntryDialog({ open, onOpenChange, entry, defaultKind = "expense"
   const setLine = (key: number, p: Partial<Line>) => setD((s) => ({ ...s, lines: s.lines.map((l) => (l.key === key ? { ...l, ...p } : l)) }))
   const setItem = (key: number, p: Partial<ItemLine>) => setD((s) => ({ ...s, items: s.items.map((l) => (l.key === key ? { ...l, ...p } : l)) }))
 
-  const cats = useMemo(() => (catalog.data?.categories ?? []).filter((c) => c.kind === d.kind), [catalog.data, d.kind])
+  // Hidden categories aren't offered, except the one an entry being edited already has.
+  const cats = useMemo(() => (catalog.data?.categories ?? []).filter((c) => c.kind === d.kind && (c.isActive || c.key === d.category)), [catalog.data, d.kind, d.category])
   const groups = catalog.data?.groups ?? []
   const words = PARTY_WORDS[d.kind]
   const busy = m.create.isPending || m.update.isPending
@@ -140,7 +141,7 @@ export function EntryDialog({ open, onOpenChange, entry, defaultKind = "expense"
   const splitTotal = d.lines.reduce((s, l) => s + toMinor(l.amount || "0"), 0)
 
   // What was sold: offered for walk-in and catering sales. The total then comes from the items.
-  const itemsEligible = d.kind === "income" && SALE_ITEM_CATEGORIES.includes(d.category)
+  const itemsEligible = d.kind === "income" && catalog.isSale(d.category)
   const { data: menu } = useSaleMenu(d.branchId === NONE ? undefined : d.branchId, open && itemsEligible)
   const hasItems = itemsEligible && d.items.length > 0
   const itemsTotal = d.items.reduce((s, l) => s + lineTotal(l), 0)
@@ -232,10 +233,10 @@ export function EntryDialog({ open, onOpenChange, entry, defaultKind = "expense"
                     ? groups.map((g) => (
                         <SelectGroup key={g.key}>
                           <SelectLabel>{g.label}</SelectLabel>
-                          {cats.filter((c) => c.group === g.key).map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
+                          {cats.filter((c) => c.group === g.key).map((c) => <SelectItem key={c.key} value={c.key}>{c.label}{c.isActive ? "" : " (hidden)"}</SelectItem>)}
                         </SelectGroup>
                       ))
-                    : cats.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
+                    : cats.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}{c.isActive ? "" : " (hidden)"}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>

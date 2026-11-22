@@ -1,11 +1,12 @@
 // Capital & expenses: the business's own books, next to the storefront's sales. Record what was put in, what's
 // been spent, sales made off-app and money taken out, including everything from before the app existed.
 import { format, parseISO } from "date-fns"
-import { ArrowDownRight, ArrowUpRight, FileSpreadsheet, FileUp, Landmark, Pencil, PiggyBank, Plus, Receipt, Target, Trash2, Users, Wallet } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, FileSpreadsheet, FileUp, Landmark, Pencil, PiggyBank, Plus, Receipt, Tags, Target, Trash2, Users, Wallet } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import { BudgetsDialog } from "@/components/admin/finance/BudgetsDialog"
+import { CategoriesDialog } from "@/components/admin/finance/CategoriesDialog"
 import { PartiesDialog } from "@/components/admin/finance/PartiesDialog"
 import { EntryDialog } from "@/components/admin/finance/EntryDialog"
 import { ImportDialog } from "@/components/admin/finance/ImportDialog"
@@ -62,6 +63,7 @@ export default function FinancePage() {
   const [importing, setImporting] = useState(false)
   const [budgets, setBudgets] = useState(false)
   const [partiesOpen, setPartiesOpen] = useState(false)
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [del, setDel] = useState<FinanceEntry | null>(null)
 
   const cats = useMemo(() => (catalog.data?.categories ?? []).filter((c) => tab === "all" || c.kind === tab), [catalog.data, tab])
@@ -86,6 +88,7 @@ export default function FinancePage() {
         actions={
           <>
             <Button variant="outline" onClick={() => setPartiesOpen(true)} data-cy="finance-parties"><Users /> Vendors & customers</Button>
+            <Button variant="outline" onClick={() => setCategoriesOpen(true)} data-cy="finance-categories"><Tags /> Categories</Button>
             <Button variant="outline" onClick={() => setBudgets(true)} data-cy="finance-budgets"><Target /> Budgets</Button>
             {can("reports.export") ? <Button variant="outline" onClick={() => FinanceEndpoints.exportEntries(params, `kiros-books-${format(new Date(), "yyyy-MM-dd")}.xlsx`).catch(() => toast.error("Download failed"))} data-cy="finance-export"><FileSpreadsheet /> Excel</Button> : null}
             {manage ? <Button variant="outline" onClick={() => setImporting(true)} data-cy="finance-import"><FileUp /> Import</Button> : null}
@@ -141,7 +144,8 @@ export default function FinancePage() {
           <SelectTrigger className="w-full sm:w-52" data-cy="finance-category"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all">All categories</SelectItem>
-            {cats.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
+            {/* Hidden categories stay here: old entries still carry them. */}
+            {cats.map((c) => <SelectItem key={c.key} value={c.key}>{c.label}{c.isActive ? "" : " (hidden)"}</SelectItem>)}
           </SelectContent>
         </Select>
         <BranchSelect value={branchId} onChange={setBranchId} allowAll className="w-full sm:w-44" />
@@ -235,6 +239,7 @@ export default function FinancePage() {
       <ImportDialog open={importing} onOpenChange={setImporting} />
       <BudgetsDialog open={budgets} onOpenChange={setBudgets} readOnly={!manage} />
       <PartiesDialog open={partiesOpen} onOpenChange={setPartiesOpen} manage={manage} />
+      <CategoriesDialog open={categoriesOpen} onOpenChange={setCategoriesOpen} manage={manage} />
       <ConfirmDialog
         open={Boolean(del)}
         onOpenChange={(o) => !o && setDel(null)}

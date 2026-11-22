@@ -1,16 +1,17 @@
 import { z } from "zod";
 import { dateOnly, idParams, money, optionalText, pageQuery, positiveMoney, queryBool, requiredText, uuid } from "../../../shared/validation/common";
-import { categoryOf, FINANCE_CATEGORY_KEYS, FINANCE_KINDS, FINANCE_PAYMENT_METHODS } from "../catalog/finance.catalog";
+import { CATEGORY_KEY_PATTERN, CATEGORY_LABEL_MAX, EXPENSE_GROUPS, FINANCE_KINDS, FINANCE_PAYMENT_METHODS } from "../catalog/finance.catalog";
+
+/** A category's short code. It must exist in the restaurant's own list: the service checks that, since the list is the owner's. */
+const categoryKey = z.string().trim().regex(CATEGORY_KEY_PATTERN, "Choose a category");
 
 /** Biggest import in one go (a year of daily entries fits). */
 export const MAX_IMPORT_ROWS = 1000;
 
-const matchesKind = (e: { kind?: string; category?: string }) => !e.kind || !e.category || categoryOf(e.category)?.kind === e.kind;
-const kindMismatch = { message: "That category does not belong to this kind of entry", path: ["category"] };
 
 const entryFields = {
   kind: z.enum(FINANCE_KINDS),
-  category: z.enum(FINANCE_CATEGORY_KEYS),
+  category: categoryKey,
   title: requiredText(160),
   amount: positiveMoney,
   entryDate: dateOnly,
@@ -49,7 +50,6 @@ const entryFields = {
 const itemsOnlyForIncome = (e: { kind?: string; items?: unknown[] }) => !e.items?.length || !e.kind || e.kind === "income";
 const entryBody = z
   .object(entryFields)
-  .refine(matchesKind, kindMismatch)
   .refine(itemsOnlyForIncome, { message: "Items can only be listed on a sale (other income)", path: ["items"] });
 
 export const listEntriesSchema = z.object({
@@ -57,7 +57,7 @@ export const listEntriesSchema = z.object({
     ...pageQuery,
     limit: z.coerce.number().int().min(1).max(200).default(25),
     kind: z.enum(FINANCE_KINDS).optional(),
-    category: z.enum(FINANCE_CATEGORY_KEYS).optional(),
+    category: categoryKey.optional(),
     branchId: uuid.optional(),
     from: dateOnly.optional(),
     to: dateOnly.optional(),
@@ -106,9 +106,8 @@ export const analyticsSchema = z.object({
 export const setBudgetsSchema = z.object({
   body: z.object({
     budgets: z
-      .array(z.object({ category: z.enum(FINANCE_CATEGORY_KEYS), monthlyAmount: z.number().int().min(0) }))
-      .max(FINANCE_CATEGORY_KEYS.length)
-      .refine((rows) => rows.every((r) => categoryOf(r.category)?.kind === "expense"), "Budgets are for expense categories only")
+      .array(z.object({ category: categoryKey, monthlyAmount: z.number().int().min(0) }))
+      .max(500)
       .refine((rows) => new Set(rows.map((r) => r.category)).size === rows.length, "Each category once"),
   }),
 });
@@ -136,3 +135,27 @@ export type UpdatePartyBody = z.infer<typeof updatePartySchema>["body"];
 
 export type SaleItemLineBody = NonNullable<EntryBody["items"]>[number];
 export const saleItemsQuerySchema = z.object({ query: z.object({ branchId: uuid.optional() }) });
+
+// ── Categories ─────────────────────────────────────────────────────────────
+
+const categoryLabel = z.string().trim().min(2, "Give it a name").max(CATEGORY_LABEL_MAX);
+export const createCategorySchema = z.object({
+  body: z.object({
+    label: categoryLabel,
+    kind: z.enum(FINANCE_KINDS),
+    /** Expenses only (and required for them). */
+    group: z.enum(EXPENSE_GROUPS).optional().nullable(),
+    /** Other income only: counts as a sale in Sales reports and the Dashboard. */
+    isSale: z.boolean().optional(),
+  }),
+});
+export const updateCategorySchema = z.object({
+  params: idParams,
+  body: z
+    .object({ label: categoryLabel, group: z.enum(EXPENSE_GROUPS).nullable(), isSale: z.boolean(), isActive: z.boolean() })
+    .partial()
+    .refine((b) => Object.keys(b).length > 0, "Nothing to update"),
+});
+export const categoryIdSchema = z.object({ params: idParams });
+export type CategoryBody = z.infer<typeof createCategorySchema>["body"];
+export type UpdateCategoryBody = z.infer<typeof updateCategorySchema>["body"];

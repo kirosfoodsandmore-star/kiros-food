@@ -2,15 +2,35 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { FinanceEndpoints } from "@/endpoints/admin.endpoints"
 import { unwrap } from "@/transport/http"
-import type { FinanceBudget, FinanceCategory, FinanceEntryInput } from "@/types/finance.types"
+import type { CategoryInput, FinanceBudget, FinanceCategory, FinanceEntryInput } from "@/types/finance.types"
 
 export const FINANCE_KEY = "admin-finance"
 type Body = Record<string, unknown>
 
+/** The restaurant's own categories. `active` is what new entries can use; `byKey` and `label` also know the hidden ones. */
 export function useFinanceCatalog() {
-  const q = useQuery({ queryKey: [FINANCE_KEY, "catalog"], queryFn: async () => unwrap(await FinanceEndpoints.categories()), staleTime: Infinity })
-  const byKey = new Map<string, FinanceCategory>((q.data?.categories ?? []).map((c) => [c.key, c]))
-  return { ...q, byKey, label: (key: string) => byKey.get(key)?.label ?? key }
+  const q = useQuery({ queryKey: [FINANCE_KEY, "catalog"], queryFn: async () => unwrap(await FinanceEndpoints.categories()), staleTime: 60_000 })
+  const all = q.data?.categories ?? []
+  const byKey = new Map<string, FinanceCategory>(all.map((c) => [c.key, c]))
+  return {
+    ...q,
+    byKey,
+    active: all.filter((c) => c.isActive),
+    label: (key: string) => byKey.get(key)?.label ?? key,
+    /** A sale category: its entries are walk-in / catering sales and can list the menu items sold. */
+    isSale: (key: string) => byKey.get(key)?.isSale ?? false,
+  }
+}
+
+export function useCategoryMutations() {
+  const qc = useQueryClient()
+  // Names and groups appear in entries, budgets and analytics, so everything finance is refreshed.
+  const done = () => qc.invalidateQueries({ queryKey: [FINANCE_KEY] })
+  return {
+    create: useMutation({ mutationFn: async (b: CategoryInput) => unwrap(await FinanceEndpoints.createCategory(b)), onSuccess: done }),
+    update: useMutation({ mutationFn: async (v: { id: string; body: Partial<Pick<FinanceCategory, "label" | "group" | "isSale" | "isActive">> }) => unwrap(await FinanceEndpoints.updateCategory(v.id, v.body)), onSuccess: done }),
+    remove: useMutation({ mutationFn: async (id: string) => unwrap(await FinanceEndpoints.removeCategory(id)), onSuccess: done }),
+  }
 }
 
 export function useFinanceEntries(params: Body) {
