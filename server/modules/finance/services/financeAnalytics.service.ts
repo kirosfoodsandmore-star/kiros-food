@@ -1,7 +1,7 @@
 // Business analytics: storefront sales and the finance ledger together, over any range (or all time), with the
 // previous period for comparison, a running cash line, restaurant KPIs, busy times and plain-language insights.
 import { assertPermission } from "../../../shared/access/can";
-import { branchScope } from "../../../shared/access/scope";
+import { branchScope, seesAllBranches } from "../../../shared/access/scope";
 import type { Actor } from "../../../shared/types/actor";
 import { addDays, resolveRange, todayIn } from "../../../shared/utils/dates";
 import { formatMoney } from "../../../shared/utils/money";
@@ -42,7 +42,7 @@ export class FinanceAnalyticsService {
     const scope = { organizationId, branchIds, from, to, timezone };
     const prevScope = { ...scope, ...prev };
 
-    const [ledger, orders, prevLedger, prevOrders, allLedger, allRevenue, heat, vendors, customers, funding, ledgerBranches, orderBranches, budgets, branchList] = await Promise.all([
+    const [ledger, orders, prevLedger, prevOrders, allLedger, allRevenue, heat, vendors, customers, funding, ledgerBranches, wholeBusiness, orderBranches, budgets, branchList] = await Promise.all([
       this.repo.ledgerBuckets(scope, granularity),
       this.repo.orderBuckets(scope, granularity),
       this.repo.ledgerBuckets(prevScope, "month"),
@@ -54,6 +54,8 @@ export class FinanceAnalyticsService {
       this.repo.topParties(scope, "income"),
       this.repo.fundingHistory(organizationId, branchIds, to),
       this.repo.ledgerByBranch(scope),
+      // Only someone who sees every branch can see whole-business entries, so only they are told what a branch view leaves out.
+      q.branchId && seesAllBranches(actor) ? this.repo.wholeBusinessTotals(scope) : Promise.resolve([]),
       this.repo.ordersByBranch(scope),
       this.repo.budgets(organizationId),
       this.branches.list(actor),
@@ -207,6 +209,16 @@ export class FinanceAnalyticsService {
       funding: fundingHistory,
       insights,
       hasLedger: allLedger.length > 0,
+      /** In a single-branch view: what was recorded for the whole business (no branch) and is therefore NOT in these numbers. */
+      leftOut: wholeBusiness.length
+        ? {
+            entries: sumBy(wholeBusiness, (r) => r.entries),
+            income: wholeBusiness.filter((r) => r.kind === "income").reduce((a, r) => a + r.amount, 0),
+            expenses: wholeBusiness.filter((r) => r.kind === "expense").reduce((a, r) => a + r.amount, 0),
+            capital: wholeBusiness.filter((r) => r.kind === "capital").reduce((a, r) => a + r.amount, 0),
+            withdrawals: wholeBusiness.filter((r) => r.kind === "withdrawal").reduce((a, r) => a + r.amount, 0),
+          }
+        : null,
     };
   }
 }

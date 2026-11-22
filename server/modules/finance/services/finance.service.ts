@@ -15,6 +15,7 @@ import { OrganizationRepository } from "../../organization/repositories/organiza
 import { categoryLabel, categoryOf, EXPENSE_GROUP_LABELS, FINANCE_CATEGORIES, FINANCE_KIND_LABELS, FINANCE_PAYMENT_METHODS } from "../catalog/finance.catalog";
 import type { FinanceEntry } from "../entities/financeEntry.entity";
 import { FinanceRepository, type NewEntry } from "../repositories/finance.repository";
+import { salesDayOf, SALES_DAY_STARTS_HOUR } from "../domain/salesDay";
 import { joinNames, PartyRepository, type EntryPartyLine } from "../repositories/party.repository";
 import { buildEntriesWorkbook, XLSX_MIME } from "./financeExport";
 import type { BudgetRow, EntryBody, ListEntriesQuery, PartyBody, PartyLineBody, UpdateEntryBody, UpdatePartyBody } from "../validators/finance.schema";
@@ -60,7 +61,7 @@ export class FinanceService {
 
   // ── Who may do what ──────────────────────────────────────────────────────
   // finance.manage: everything. finance.record_sales (without manage): record other income, and see, correct or
-  // delete only the sales they recorded themselves, on the day they recorded them.
+  // delete only the sales they recorded themselves, until the sales day rolls over (6am).
 
   private assertMayRecord(actor: Actor, kind: string): void {
     if (can(actor, "finance.manage")) return;
@@ -74,7 +75,7 @@ export class FinanceService {
     const org = await this.organizations.findById(actor.organizationId);
     const tz = org?.timezone ?? "Africa/Lagos";
     if (entry.kind !== "income" || entry.createdBy !== actor.id) throw AppError.forbidden("You can only change sales you recorded yourself");
-    if (todayIn(tz, entry.createdAt) !== todayIn(tz)) throw AppError.forbidden("Sales can only be changed on the day they were recorded. Ask a manager to correct this one.");
+    if (salesDayOf(entry.createdAt, tz) !== salesDayOf(new Date(), tz)) throw AppError.forbidden(`Sales can only be changed until ${SALES_DAY_STARTS_HOUR}am the next morning. Ask a manager to correct this one.`);
     if (newKind && newKind !== "income") throw AppError.forbidden("You can only record sales (other income)");
   }
 
@@ -132,6 +133,8 @@ export class FinanceService {
       groups: Object.entries(EXPENSE_GROUP_LABELS).map(([key, label]) => ({ key, label })),
       paymentMethods: FINANCE_PAYMENT_METHODS,
       categories: FINANCE_CATEGORIES,
+      /** Local hour the sales day rolls over; sales-only staff can change a sale until then (see domain/salesDay.ts). */
+      salesDayStartsHour: SALES_DAY_STARTS_HOUR,
     };
   }
 

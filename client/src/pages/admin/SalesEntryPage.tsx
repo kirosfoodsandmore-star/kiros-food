@@ -1,6 +1,6 @@
 // Record sales: the screen for staff who may only record sales (finance.record_sales), e.g. a cashier entering the
 // day's walk-in and catering sales. They see only the sales they recorded, and can correct them on the same day.
-import { format, isToday, parseISO } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { HandCoins, Pencil, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useBranches } from "@/hooks/useAdminBranches"
 import { useFinanceCatalog, useFinanceEntries, useFinanceMutations } from "@/hooks/useFinance"
 import { useAdminCurrency } from "@/hooks/useFormatters"
+import { salesDay } from "@/lib/finance"
 import type { FinanceEntry, FinanceKind } from "@/types/finance.types"
 
 const SALES_ONLY: FinanceKind[] = ["income"]
@@ -33,10 +34,16 @@ export default function SalesEntryPage() {
   const [del, setDel] = useState<FinanceEntry | null>(null)
 
   const entries = res?.data ?? []
-  const today = entries.filter((e) => isToday(new Date(e.createdAt)))
+  // The sales day rolls over at 6am (not midnight): a late-night sale still counts for the evening it belongs to.
+  const tz = session?.restaurant.timezone ?? "Africa/Lagos"
+  const startsHour = catalog.data?.salesDayStartsHour ?? 6
+  const currentDay = salesDay(new Date(), tz, startsHour)
+  const inCurrentDay = (e: FinanceEntry) => salesDay(e.createdAt, tz, startsHour) === currentDay
+  const rollover = `${startsHour % 12 || 12}${startsHour < 12 ? "am" : "pm"}`
+  const today = entries.filter(inCurrentDay)
   const todayTotal = today.reduce((s, e) => s + e.amount, 0)
-  // Mirrors the server rule: managers can change anything; others only their own sales, on the day they recorded them.
-  const mayChange = (e: FinanceEntry) => manager || (e.createdBy === session?.user.id && isToday(new Date(e.createdAt)))
+  // Mirrors the server rule: managers can change anything; others only their own sales, until the sales day rolls over.
+  const mayChange = (e: FinanceEntry) => manager || (e.createdBy === session?.user.id && inCurrentDay(e))
   const branchName = (id: string | null) => (id ? (branches?.find((b) => b.id === id)?.name ?? "") : "Whole business")
 
   return (
@@ -52,7 +59,7 @@ export default function SalesEntryPage() {
           <div>
             <p className="text-sm text-muted-foreground">{manager ? "Recorded today (everyone)" : "You've recorded today"}</p>
             <p className="mt-1 font-display text-2xl font-semibold"><Money value={todayTotal} fmt={fmt} /></p>
-            <p className="text-xs text-muted-foreground">{today.length} {today.length === 1 ? "sale" : "sales"}{!manager ? " · you can correct today's sales; ask a manager about older ones" : ""}</p>
+            <p className="text-xs text-muted-foreground">{today.length} {today.length === 1 ? "sale" : "sales"}{!manager ? ` · you can correct these until ${rollover} tomorrow; ask a manager about older ones` : ""}</p>
           </div>
           <HandCoins className="size-10 text-primary/60" aria-hidden />
         </CardContent>

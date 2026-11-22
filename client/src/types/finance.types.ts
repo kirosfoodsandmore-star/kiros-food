@@ -17,6 +17,8 @@ export interface FinanceCatalog {
   groups: Array<{ key: ExpenseGroup; label: string }>
   paymentMethods: string[]
   categories: FinanceCategory[]
+  /** Local hour the sales day rolls over (6 = 6am). Sales-only staff can change a sale until then. */
+  salesDayStartsHour: number
 }
 
 export interface FinanceEntry {
@@ -146,4 +148,6 @@ export interface FinanceAnalytics {
   funding: Array<{ id: string; date: string; kind: "capital" | "withdrawal"; kindLabel: string; category: string; categoryLabel: string; title: string; party: string | null; amount: number; netCapital: number }>
   insights: Array<{ tone: InsightTone; title: string; detail: string }>
   hasLedger: boolean
+  /** Single-branch view only: entries filed for the whole business (no branch), which are NOT in these numbers. */
+  leftOut: { entries: number; income: number; expenses: number; capital: number; withdrawals: number } | null
 }

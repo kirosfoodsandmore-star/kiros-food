@@ -153,6 +153,21 @@ export class FinanceRepository {
     return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
   }
 
+  /**
+   * Entries filed for the whole business (no branch) in the range, by kind. A single-branch view can't include them,
+   * so the analytics page tells the owner how much it is leaving out.
+   */
+  async wholeBusinessTotals(s: LedgerScope): Promise<Array<{ kind: string; amount: number; entries: number }>> {
+    const p = new SqlParams();
+    const rows: Array<{ kind: string; amount: number; entries: number }> = await db().query(
+      `SELECT e.kind, SUM(e.amount) AS amount, COUNT(*)::int AS entries FROM finance_entries e
+       WHERE e.organization_id = ${p.add(s.organizationId)} AND e.deleted_at IS NULL AND e.branch_id IS NULL
+         AND e.entry_date BETWEEN ${p.add(s.from)}::date AND ${p.add(s.to)}::date GROUP BY e.kind`,
+      p.values
+    );
+    return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+  }
+
   async firstEntryDate(organizationId: string, branchIds: string[] | null): Promise<string | null> {
     const p = new SqlParams();
     const rows: Array<{ d: string | null }> = await db().query(`SELECT MIN(e.entry_date)::text AS d FROM finance_entries e WHERE ${this.entryWhere(p, organizationId, branchIds).join(" AND ")}`, p.values);

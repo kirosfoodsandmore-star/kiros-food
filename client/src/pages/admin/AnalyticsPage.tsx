@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/contexts/AuthContext"
 import { useAdminBranch } from "@/hooks/useAdminBranch"
+import { useBranches } from "@/hooks/useAdminBranches"
 import { useFinanceAnalytics } from "@/hooks/useFinance"
 import { useAdminCurrency } from "@/hooks/useFormatters"
 import { usePersistedState } from "@/hooks/usePersistedState"
@@ -47,6 +48,8 @@ export default function AnalyticsPage() {
   const [gran, setGran] = useState<"auto" | Granularity>("auto")
   const params = { ...presetRange(preset, custom), branchId: branchId || undefined, granularity: gran === "auto" ? undefined : gran }
   const { data, isLoading, error, refetch, isFetching } = useFinanceAnalytics(params)
+  const { data: branches } = useBranches()
+  const branchName = branchId ? (branches?.find((b) => b.id === branchId)?.name ?? "this branch") : null
 
   return (
     <div data-cy="analytics-page">
@@ -71,12 +74,12 @@ export default function AnalyticsPage() {
         {preset === "custom" ? <DateRangeFilter from={custom.from} to={custom.to} onChange={setCustom} /> : null}
         {isFetching && data ? <span className="text-xs text-muted-foreground">Updating…</span> : null}
       </div>
-      {isLoading ? <PageLoader /> : error || !data ? <ErrorState message={`Analytics could not be loaded.${error instanceof Error ? ` ${error.message}` : ""}`} onRetry={() => void refetch()} /> : <Body data={data} money={money} fmt={fmt} canManage={can("finance.manage")} />}
+      {isLoading ? <PageLoader /> : error || !data ? <ErrorState message={`Analytics could not be loaded.${error instanceof Error ? ` ${error.message}` : ""}`} onRetry={() => void refetch()} /> : <Body data={data} money={money} fmt={fmt} canManage={can("finance.manage")} branchName={branchName} onShowAll={() => setBranchId("")} />}
     </div>
   )
 }
 
-function Body({ data, money, fmt, canManage }: { data: FinanceAnalytics; money: (v: number) => string; fmt: ReturnType<typeof useAdminCurrency>; canManage: boolean }) {
+function Body({ data, money, fmt, canManage, branchName, onShowAll }: { data: FinanceAnalytics; money: (v: number) => string; fmt: ReturnType<typeof useAdminCurrency>; canManage: boolean; branchName: string | null; onShowAll: () => void }) {
   const { totals: t, previous: p, series, range } = data
   const g = range.granularity
   const labels = useMemo(() => series.map((s) => bucketLabel(s.bucket, g, true)), [series, g])
@@ -110,6 +113,28 @@ function Body({ data, money, fmt, canManage }: { data: FinanceAnalytics; money: 
 
   return (
     <div className="space-y-5">
+      {/* A branch picked on any admin page stays applied here. Entries filed for the whole business can't be part of one
+          branch's numbers, so say so instead of letting a sale quietly disappear. */}
+      {branchName && data.leftOut ? (
+        <Card className="border-warning/50 bg-warning/5" role="status" data-cy="analytics-left-out">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex min-w-0 gap-3">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+              <div className="min-w-0 text-sm">
+                <p className="font-medium">Showing {branchName} only. Some of your books aren't in these numbers.</p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {data.leftOut.entries} {data.leftOut.entries === 1 ? "entry" : "entries"} recorded for the whole business in this period:{" "}
+                  {[data.leftOut.income ? <span key="i"><Money value={data.leftOut.income} fmt={fmt} /> income</span> : null, data.leftOut.expenses ? <span key="e"><Money value={data.leftOut.expenses} fmt={fmt} /> expenses</span> : null, data.leftOut.capital ? <span key="c"><Money value={data.leftOut.capital} fmt={fmt} /> capital</span> : null, data.leftOut.withdrawals ? <span key="w"><Money value={data.leftOut.withdrawals} fmt={fmt} /> money out</span> : null]
+                    .filter(Boolean)
+                    .flatMap((el, i) => (i ? [", ", el] : [el]))}
+                  . Entries without a branch only appear under <b>All branches</b>.
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={onShowAll} data-cy="analytics-show-all">Show all branches</Button>
+          </CardContent>
+        </Card>
+      ) : null}
       {!data.hasLedger ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">

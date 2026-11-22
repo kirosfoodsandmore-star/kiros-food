@@ -26,7 +26,7 @@ Each story reads `As an owner (or manager, or staff member), I want … so that 
 | --- | --- |
 | `finance.view` | Open Capital & expenses and Analytics, read every entry and budget, see all the analytics and the vendors & customers list with totals |
 | `finance.manage` | Record, import, edit and delete any entry; set budgets; add, rename, merge and remove vendors & customers |
-| `finance.record_sales` | **Sales only:** record other income (walk-in, catering…), split between customers; see and correct only the sales they recorded, on the same day. No capital, expenses, budgets, analytics, imports or downloads. |
+| `finance.record_sales` | **Sales only:** record other income (walk-in, catering…), split between customers; see and correct only the sales they recorded, until 6am the next morning. No capital, expenses, budgets, analytics, imports or downloads. |
 | `reports.export` (existing) | Download the books as an Excel file |
 
 The Owner role has everything. No other role gets any finance permission until the Owner grants it, because the books show capital, salaries and profit.
@@ -52,7 +52,7 @@ The Owner role has everything. No other role gets any finance permission until t
   1. In **Staff & roles**, create a role (e.g. "Cashier") and tick only **Finance → Record walk-in and other sales only**. Give it to the person and set their branch.
   2. When they sign in they land on **Record sales**, and that's the only finance link they see. Opening `/admin/finance` or `/admin/analytics` sends them away.
   3. **Record a sale** opens the form locked to sales: no capital/expense/money-out switch, the Branch box shows only their branch, and the lines are **Customers**.
-  4. The page shows what they've recorded today and their own sales. They can edit or delete a sale only on the day they recorded it; after that it's "ask a manager". Managers can always correct it in Capital & expenses.
+  4. The page shows what they've recorded today and their own sales. They can edit or delete a sale until **6am the next morning**: the sales day rolls over at 6am, not midnight, so a sale entered at 11pm or 1am can still be fixed at closing time. After 6am it's "ask a manager" (the page says so). Managers can always correct it in Capital & expenses.
   - They see only the names of customers already used on sales: no vendor names and no amounts. They can't import, download, set budgets, or manage the vendors & customers list.
   - Someone with both this and `finance.view` doesn't get the extra link: Capital & expenses already covers it.
 
@@ -248,7 +248,8 @@ What to bring in, in this order:
   - **Auto** picks daily up to 45 days, weekly up to about 6 months, and monthly beyond that. You can override it.
 
 - [ ] **As the owner, I want to look at one branch, so that I can judge each location.**
-  - Choose a branch. **Note:** whole-business entries (shared rent, capital) are left out of a single-branch view. Use **All branches** for the full picture.
+  - Choose a branch. **Note:** entries filed for the whole business (shared rent, capital, a sale recorded with Branch = Whole business) belong to no branch, so they are left out of a single-branch view. When that happens a yellow notice at the top says how much is left out (income, expenses…) and has a **Show all branches** button.
+  - The branch you pick is remembered across the admin pages (Dashboard, Orders, Analytics…), so check the branch box if a number looks too low. If a sale or cost "is missing" from Analytics, a remembered branch is the first thing to look at.
 
 ### The headline
 
@@ -434,7 +435,7 @@ Use this on a test restaurant (or a staging copy), not your live books. It gives
 - The category must belong to the kind (e.g. Rent is only ever an expense).
 - Branch-limited staff can only file and see entries for their branches.
 - Recording, importing, editing, deleting, budgets and the vendors & customers list need `finance.manage`; the Excel download needs `reports.export`.
-- `finance.record_sales` alone allows only: recording other income, and seeing / correcting / deleting the sales that person recorded, on the day they recorded them. Everything else is refused by the server, not just hidden.
+- `finance.record_sales` alone allows only: recording other income, and seeing / correcting / deleting the sales that person recorded, until the sales day rolls over at 6am. Everything else is refused by the server, not just hidden.
 - In a split, the lines must add up to the total, each needs a name and an amount, and a name can appear only once.
 - Every change is written to the audit log; deleted entries can be traced there.
 - Imports: Excel (.xlsx) or rows pasted from Excel; up to 1,000 rows and 5 MB per file; all rows are saved together or none.
@@ -452,6 +453,6 @@ These aren't covered yet. Decide them before relying on the numbers for anything
 5. **Budgets** are per category for the whole business, not per branch.
 6. **Stock on hand** isn't tracked, so food cost is based on what was bought in the period, not what was used.
 7. **Estimated cash** is only as good as what's recorded. It isn't a bank balance, so compare it with the bank statement each month.
-8. **Splits in Excel.** An imported row has one vendor or customer. A split entry is imported as one row per person, so it becomes separate entries (the totals are the same). Splitting can be done in the app.
-9. **Cashier corrections after the day** have to be done by a manager in Capital & expenses. Should cashiers get a longer window?
+8. **Splits in Excel.** An imported row has one vendor or customer. A split entry is imported as one row per person, so it becomes separate entries (the totals are the same). Splitting can be done in the app. (Decided: no multi-vendor cell in Excel; if grouping rows ever matters, an optional "Entry no." column can be added.)
+9. **Cashier corrections** are limited to 6am the next morning (decided: the short window stops a sale being recorded, the cash taken, and the sale deleted days later). Later corrections go to a manager. The 6am is fixed for now, not a setting; if you trade through the night, say so and we'll move it.
 10. **This is for running the business, not tax.** It doesn't replace statutory accounts or tax filings.

@@ -193,3 +193,12 @@ export function buildImportFromTable(table: string[][], categories: FinanceCateg
   })
   return { rows, missing: [] }
 }
+
+/**
+ * The sales day (YYYY-MM-DD in the restaurant's time zone) a moment falls on. The day rolls over at `startsHour`
+ * (6 = 6am), not midnight, so a 1am sale still belongs to the evening before. Mirrors the server's rule.
+ */
+export function salesDay(at: Date | string, timeZone: string, startsHour: number): string {
+  const shifted = new Date(new Date(at).getTime() - startsHour * 3_600_000)
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(shifted)
+}
