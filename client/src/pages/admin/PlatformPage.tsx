@@ -60,9 +60,10 @@ export default function PlatformPage() {
           )}
         </CardContent>
       </Card>
-      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div>
-          <SearchInput value={search} onChange={setSearch} placeholder="Restaurant, slug or email" className="mb-3 w-72" dataCy="platform-search" />
+      {/* grid-cols-1 + min-w-0: without them the single column grows to the table's full width on a phone and the page scrolls sideways. */}
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0">
+          <SearchInput value={search} onChange={setSearch} placeholder="Restaurant, slug or email" className="mb-3 w-full sm:w-72" dataCy="platform-search" />
           {isLoading ? <Skeleton className="h-64" /> : !data || data.data.length === 0 ? <EmptyState title="No restaurants" /> : (
             <>
               <Table>
