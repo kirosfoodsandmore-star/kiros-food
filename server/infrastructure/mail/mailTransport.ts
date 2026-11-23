@@ -21,11 +21,29 @@ export interface OutgoingMail {
   attachments?: MailAttachment[];
 }
 
+/** The routes an email can leave by. The email log records one of these for every email that was actually attempted. */
+export type MailProvider = "gmail" | "apps_script";
+
+/**
+ * Thrown when sending failed. It says which provider was responsible so the email log can show it for failed emails too:
+ * the one that refused the message, or, when the relay failed and Gmail was tried as a fallback, the last one tried
+ * (the message then names both failures).
+ */
+export class MailSendError extends Error {
+  constructor(
+    message: string,
+    readonly provider: MailProvider
+  ) {
+    super(message);
+    this.name = "MailSendError";
+  }
+}
+
 /** What became of a message handed to the transport. `sent` means the provider accepted it, not that it reached an inbox. */
 export interface MailResult {
   sent: boolean;
   /** How it went out; null when nothing was sent. */
-  provider: "gmail" | "apps_script" | null;
+  provider: MailProvider | null;
   /** Anything worth a human knowing: why nothing was sent, or that the relay failed and Gmail took over. */
   note?: string;
 }
@@ -125,14 +143,19 @@ export const mailTransport = {
           try {
             await viaSmtp(mail);
           } catch (smtpErr) {
-            throw new Error(`Apps Script relay failed (${relayMessage}); the Gmail fallback also failed (${smtpErr instanceof Error ? smtpErr.message : smtpErr})`);
+            // Both were tried; Gmail was the last one, so it is the provider recorded for the failure.
+            throw new MailSendError(`Apps Script relay failed (${relayMessage}); the Gmail fallback also failed (${smtpErr instanceof Error ? smtpErr.message : smtpErr})`, "gmail");
           }
           return { sent: true, provider: "gmail", note: `Apps Script relay failed (${relayMessage}); sent through Gmail instead` };
         }
-        throw scriptErr;
+        throw new MailSendError(relayMessage, "apps_script");
       }
     }
-    await viaSmtp(mail);
+    try {
+      await viaSmtp(mail);
+    } catch (err) {
+      throw new MailSendError(err instanceof Error ? err.message : String(err), "gmail");
+    }
     return { sent: true, provider: "gmail" };
   },
 };

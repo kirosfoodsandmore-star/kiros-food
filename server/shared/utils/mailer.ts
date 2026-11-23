@@ -1,6 +1,6 @@
 // Email building blocks. emailLayout() is the ONLY place <html>/<body> appear; every email body is
 // made of the components below. All user-supplied text must go through esc() / escapeAndLineBreak().
-import { mailTransport, type OutgoingMail } from "../../infrastructure/mail/mailTransport";
+import { MailSendError, mailTransport, type OutgoingMail } from "../../infrastructure/mail/mailTransport";
 import type { NewEmailLog } from "../../modules/notification/repositories/emailLog.repository";
 import { EmailLogService, subjectForLog, type MailKind } from "../../modules/notification/services/emailLog.service";
 
@@ -143,7 +143,9 @@ export async function sendMail(input: OutgoingMail & { organizationId?: string |
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[mail] failed to send "${mail.subject}"`, message);
-    for (const to of recipients) log.push(entry(to, "failed", null, message));
+    // A failure still says which provider was responsible (the one that refused it, or the last one tried).
+    const provider = err instanceof MailSendError ? err.provider : null;
+    for (const to of recipients) log.push(entry(to, "failed", provider, message));
     await EmailLogService.Instance.record(log);
     return false;
   }
