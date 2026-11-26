@@ -1,5 +1,6 @@
 // The KIROS FarmShop menu, from "KIROS FarmShop — Menu Ordering User Stories.md" (menu notes taken at the shop on
-// 14 Nov 2026, updated 21 Nov 2026 with madam's answers, fruit salads, overnight oat and chia pudding). Used by `npm run seed` (fresh database) and `npm run seed:farmshop` (adds it to an existing one).
+// 14 Nov 2026, updated 21 Nov 2026 with madam's answers, fruit salads, overnight oat and chia pudding, and 26 Nov
+// 2026 with the shots and detox juices). Used by `npm run seed` (fresh database) and `npm run seed:farmshop` (adds it to an existing one).
 //
 // PRICES ARE PLACEHOLDERS. The notes record no prices; every price here must be confirmed and set in
 // Admin → Menus / Option groups before go-live. Items the notes leave incomplete (a missing name, dressing,
@@ -177,13 +178,19 @@ export const CATEGORIES: CategorySpec[] = [
       { name: "Chia pudding", price: K(4000), description: "Chia seed, yoghurt, fruit puree, honey, almond nuts, strawberry, grape, blueberry and coconut milk." },
     ],
   },
+  // Open question: ingredients and prices aren't recorded. Shown anyway at the owner's request (26 Nov 2026).
+  {
+    name: "Detox juices",
+    description: null,
+    items: ["Cleanser", "Polo", "Tummy Blast"].map((name) => ({ name, price: K(3500), description: "Detox juice." })),
+  },
   {
     name: "Juice blends",
     description: "Natural juice blends, pressed fresh.",
     items: [
       { name: "My Skin", price: K(3500), description: "Carrot, pineapple, ginger, turmeric and orange.", featured: true },
       { name: "Imperial", price: K(3500), description: "Sweet melon, pineapple, watermelon and beetroot." },
-      { name: "Vitamin C", price: K(3500), description: "Pineapple, sweet melon, yellow bell pepper and ginger." },
+      { name: "Vitamin See", price: K(3500), description: "Pineapple, sweet melon, yellow bell pepper and ginger." },
       { name: "Refuel", price: K(3500), description: "Pineapple, cucumber and beetroot." },
       { name: "Immune Hero", price: K(3500), description: "Pineapple, orange, cucumber, lime, ginger and lemongrass." },
       { name: "Sea Breeze", price: K(3500), description: "Carrot, coconut, clove, ginger and date." },
@@ -198,6 +205,17 @@ export const CATEGORIES: CategorySpec[] = [
       { name: "Pineapple juice", price: K(3000), description: "Freshly pressed pineapple." },
       { name: "Watermelon juice", price: K(3000), description: "Freshly pressed watermelon." },
     ],
+  },
+  // Open question: ingredients and prices aren't recorded. Shown anyway at the owner's request (26 Nov 2026).
+  {
+    name: "Wellness shots",
+    description: null,
+    items: ["Healer", "Greenland", "Pincu"].map((name) => ({ name, price: K(1500), description: "Wellness shot." })),
+  },
+  {
+    name: "Glowing skin shots",
+    description: null,
+    items: ["Bloody Boost", "Ranger", "Baby Girl"].map((name) => ({ name, price: K(1500), description: "Glowing skin shot." })),
   },
 ];
 
