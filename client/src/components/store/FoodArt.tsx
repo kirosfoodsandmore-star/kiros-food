@@ -41,6 +41,7 @@ const ICONS: Array<[RegExp, LucideIcon]> = [
   [/shawarma|\bwraps?\b|sandwich/i, Sandwich],
   [/smoothie/i, CupSoda],
   [/juice/i, Citrus],
+  [/\bshots?\b/i, GlassWater],
   [/parfait|granola/i, IceCreamCone],
   [/burger|smash/i, Hamburger],
   [/boba|bubble|milk ?tea|tea\b|matcha|chai/i, CupSoda],
